@@ -14,6 +14,8 @@ interface Props {
   onLogout: () => void;
 }
 
+const logoImg = "https://res.cloudinary.com/dfltnm8qu/image/upload/v1780490163/IMG_7660.JPG__2_-removebg-preview_vyoxd3.png";
+
 export function AdminPage({ onLogout }: Props) {
   const [tab, setTab] = useState<Tab>("reservations");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -40,18 +42,9 @@ export function AdminPage({ onLogout }: Props) {
         } lg:static lg:flex`}
       >
         {/* Logo */}
-        <div className="p-7 border-b border-[#D4AF37]/10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center">
-              <Scissors size={16} className="text-[#D4AF37]" />
-            </div>
-            <div>
-              <div className="text-[#f0ebe0] text-sm" style={{ fontFamily: "Playfair Display, serif", fontWeight: 700 }}>
-                AVIATOR
-              </div>
-              <div className="text-[#D4AF37]/50 text-[9px] tracking-[0.3em] uppercase">Admin</div>
-            </div>
-          </div>
+        <div className="p-7 border-b border-[#D4AF37]/10 flex flex-col items-center justify-center">
+          <img src={logoImg} alt="AVIATOR" className="h-20 w-auto object-contain mb-2" />
+          <div className="text-[#D4AF37]/50 text-[9px] tracking-[0.4em] uppercase">Espace Admin</div>
         </div>
 
         {/* Nav */}

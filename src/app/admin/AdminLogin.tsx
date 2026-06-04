@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Lock, Eye, EyeOff, Scissors } from "lucide-react";
+import { Lock, Eye, EyeOff } from "lucide-react";
 import { login } from "../../lib/store";
 
 interface Props {
   onLogin: () => void;
 }
+
+const logoImg = "https://res.cloudinary.com/dfltnm8qu/image/upload/v1780490163/IMG_7660.JPG__2_-removebg-preview_vyoxd3.png";
 
 export function AdminLogin({ onLogin }: Props) {
   const [password, setPassword] = useState("");
@@ -43,20 +45,12 @@ export function AdminLogin({ onLogin }: Props) {
       >
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center mx-auto mb-5">
-            <Scissors size={26} className="text-[#D4AF37]" />
-          </div>
-          <div
-            className="text-[#f0ebe0] text-2xl mb-1"
-            style={{ fontFamily: "Playfair Display, serif", fontWeight: 700 }}
-          >
-            AVIATOR
-          </div>
+          <img src={logoImg} alt="AVIATOR" className="h-32 w-auto object-contain mx-auto mb-2" />
           <div
             className="text-[#D4AF37]/60 text-[10px] tracking-[0.45em] uppercase"
             style={{ fontFamily: "Raleway, sans-serif" }}
           >
-            Admin Panel
+            Espace Admin
           </div>
         </div>
 
