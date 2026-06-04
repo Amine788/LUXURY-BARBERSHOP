@@ -198,8 +198,9 @@ export function Pricing() {
             Prendre Rendez-vous
           </button>
           <a
-            href="https://wa.me/212659659715?text=Bonjour%20AVIATOR%20Barber%20Shop%2C%20je%20souhaite%20fixer%20un%20rendez-vous"
+            href={whatsappUrl}
             target="_blank"
+
             rel="noopener noreferrer"
             className="border border-[#25D366]/40 text-[#25D366]/80 px-12 py-4 text-xs tracking-[0.25em] uppercase hover:border-[#25D366]/70 hover:bg-[#25D366]/8 transition-all duration-300 flex items-center gap-3"
             style={{ fontFamily: "Raleway, sans-serif" }}

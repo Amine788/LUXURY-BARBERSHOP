@@ -104,7 +104,35 @@ const KEYS = {
   reservations: "aviator_reservations",
   auth: "aviator_admin_auth",
   pricing: "aviator_pricing",
+  contact: "aviator_contact",
 };
+
+// ─── Contact ──────────────────────────────────────────────────────────────────
+
+const DEFAULT_PHONE = "212659659715";
+const DEFAULT_DISPLAY_PHONE = "05 28 32 63 64";
+
+export function getContactPhone(): string {
+  return localStorage.getItem(KEYS.contact) || DEFAULT_PHONE;
+}
+
+export function saveContactPhone(phone: string): void {
+  localStorage.setItem(KEYS.contact, phone);
+}
+
+export function getDisplayPhone(): string {
+  return localStorage.getItem(KEYS.contact + "_display") || DEFAULT_DISPLAY_PHONE;
+}
+
+export function saveDisplayPhone(phone: string): void {
+  localStorage.setItem(KEYS.contact + "_display", phone);
+}
+
+export function getWhatsAppUrl(message?: string): string {
+  const phone = getContactPhone();
+  const defaultMsg = "Bonjour AVIATOR Barber Shop, je souhaite fixer un rendez-vous";
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message || defaultMsg)}`;
+}
 
 // ─── Default pricing ──────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { User, Phone, ChevronDown, Calendar, Clock, Check } from "lucide-react";
-import { addReservation, getBarbers } from "../../lib/store";
+import { addReservation, getBarbers, getWhatsAppUrl } from "../../lib/store";
 
 const staff = getBarbers().map((b) => ({ name: b.name, photo: b.photo }));
 
@@ -32,8 +32,7 @@ const timeSlots = [
   "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
 ];
 
-const WHATSAPP_BASE =
-  "https://wa.me/212659659715?text=Bonjour%20AVIATOR%20Barber%20Shop%2C%20je%20souhaite%20fixer%20un%20rendez-vous";
+const WHATSAPP_BASE = getWhatsAppUrl();
 
 const fieldLabel = "text-[#D4AF37]/55 text-[10px] tracking-[0.3em] uppercase mb-2 block";
 const inputCls =
@@ -84,10 +83,8 @@ export function Booking() {
   const today = new Date().toISOString().split("T")[0];
 
   const buildWhatsAppUrl = () => {
-    const msg = encodeURIComponent(
-      `Bonjour AVIATOR Barbershop, je souhaite réserver :\n• Service : ${form.service || "À discuter"}\n• Barbier : ${form.barber || "Pas de préférence"}\n• Date : ${form.date || "À discuter"}\n• Heure : ${form.time || "À discuter"}\nMon nom est ${form.name} et mon numéro est ${form.phone}.`
-    );
-    return `https://wa.me/212659659715?text=${msg}`;
+    const msg = `Bonjour AVIATOR Barbershop, je souhaite réserver :\n• Service : ${form.service || "À discuter"}\n• Barbier : ${form.barber || "Pas de préférence"}\n• Date : ${form.date || "À discuter"}\n• Heure : ${form.time || "À discuter"}\nMon nom est ${form.name} et mon numéro est ${form.phone}.`;
+    return getWhatsAppUrl(msg);
   };
 
   return (

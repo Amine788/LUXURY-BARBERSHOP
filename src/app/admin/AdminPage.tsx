@@ -1,13 +1,14 @@
 import { useState } from "react";
 import {
-  Scissors, Calendar, Users, LogOut, Menu, X, BarChart3, Tag,
+  Scissors, Calendar, Users, LogOut, Menu, X, BarChart3, Tag, Settings as SettingsIcon,
 } from "lucide-react";
 import { logout } from "../../lib/store";
 import { Reservations } from "./sections/Reservations";
 import { TeamManager } from "./sections/TeamManager";
 import { PricingManager } from "./sections/PricingManager";
+import { Settings } from "./sections/Settings";
 
-type Tab = "reservations" | "team" | "pricing";
+type Tab = "reservations" | "team" | "pricing" | "settings";
 
 interface Props {
   onLogout: () => void;
@@ -26,6 +27,7 @@ export function AdminPage({ onLogout }: Props) {
     { id: "reservations", label: "Réservations", icon: <Calendar size={16} /> },
     { id: "team", label: "Équipe", icon: <Users size={16} /> },
     { id: "pricing", label: "Tarifs", icon: <Tag size={16} /> },
+    { id: "settings", label: "Paramètres", icon: <SettingsIcon size={16} /> },
   ];
 
   return (
@@ -123,6 +125,7 @@ export function AdminPage({ onLogout }: Props) {
           {tab === "reservations" && <Reservations />}
           {tab === "team" && <TeamManager />}
           {tab === "pricing" && <PricingManager />}
+          {tab === "settings" && <Settings />}
         </main>
       </div>
     </div>

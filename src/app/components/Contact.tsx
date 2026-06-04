@@ -1,31 +1,32 @@
 import { motion } from "motion/react";
 import { MapPin, Phone, Clock, Instagram, Facebook } from "lucide-react";
-
-const contactInfo = [
-  {
-    icon: MapPin,
-    label: "Adresse",
-    value: "Boulevard Al Mahdi Ben Abboud",
-    sub: "EL HOUDA, Agadir",
-  },
-  {
-    icon: Phone,
-    label: "Téléphone",
-    value: "05 28 32 63 64",
-    sub: "Lun–Sam 9h–22h · Dim 10h–20h",
-  },
-  {
-    icon: Clock,
-    label: "Horaires",
-    value: "Lun – Sam : 9h00 – 22h00",
-    sub: "Dimanche : 10h00 – 20h00",
-  },
-];
-
-const WHATSAPP_URL =
-  "https://wa.me/212659659715?text=Bonjour%20AVIATOR%20Barber%20Shop%2C%20je%20souhaite%20fixer%20un%20rendez-vous";
+import { getWhatsAppUrl, getDisplayPhone } from "../../lib/store";
 
 export function Contact() {
+  const WHATSAPP_URL = getWhatsAppUrl();
+  const displayPhone = getDisplayPhone();
+
+  const contactInfo = [
+    {
+      icon: MapPin,
+      label: "Adresse",
+      value: "Boulevard Al Mahdi Ben Abboud",
+      sub: "EL HOUDA, Agadir",
+    },
+    {
+      icon: Phone,
+      label: "Téléphone",
+      value: displayPhone,
+      sub: "Lun–Sam 9h–22h · Dim 10h–20h",
+    },
+    {
+      icon: Clock,
+      label: "Horaires",
+      value: "Lun – Sam : 9h00 – 22h00",
+      sub: "Dimanche : 10h00 – 20h00",
+    },
+  ];
+
   return (
     <section id="contact" className="py-36 bg-[#060b07]">
       <div className="max-w-7xl mx-auto px-6">

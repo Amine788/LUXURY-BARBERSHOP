@@ -12,14 +12,12 @@ import { Contact } from "./components/Contact";
 import { Footer } from "./components/Footer";
 import { AdminLogin } from "./admin/AdminLogin";
 import { AdminPage } from "./admin/AdminPage";
-import { isAuthenticated } from "../lib/store";
-
-const WHATSAPP_URL =
-  "https://wa.me/212659659715?text=Bonjour%20AVIATOR%20Barber%20Shop%2C%20je%20souhaite%20fixer%20un%20rendez-vous";
+import { isAuthenticated, getWhatsAppUrl } from "../lib/store";
 
 // ── Main site ─────────────────────────────────────────────────────────────────
 function MainSite() {
   const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const whatsappUrl = getWhatsAppUrl();
 
   useEffect(() => {
     const handler = () => setShowWhatsApp(window.scrollY > 500);
@@ -42,7 +40,7 @@ function MainSite() {
 
       {/* Floating WhatsApp button */}
       <a
-        href={WHATSAPP_URL}
+        href={whatsappUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"

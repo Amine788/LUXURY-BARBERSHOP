@@ -90,8 +90,9 @@ export function Hero() {
             Réserver Maintenant
           </button>
           <a
-            href="https://wa.me/212659659715?text=Bonjour%20AVIATOR%20Barber%20Shop%2C%20je%20souhaite%20fixer%20un%20rendez-vous"
+            href={whatsappUrl}
             target="_blank"
+
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-3 border border-[#25D366]/45 text-[#25D366]/80 px-12 py-4 tracking-[0.2em] uppercase text-xs hover:border-[#25D366]/80 hover:bg-[#25D366]/8 transition-all duration-300 min-w-[240px]"
             style={{ fontFamily: "Raleway, sans-serif" }}
