@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
+import { getWhatsAppUrl } from "../../lib/store";
 
 const heroBg = "https://res.cloudinary.com/dfltnm8qu/image/upload/q_100,f_auto,w_1920/v1780483010/WhatsApp_Image_2026-06-03_at_10.44.35_2_smhigf.jpg";
 
 export function Hero() {
   const [loaded, setLoaded] = useState(false);
+  const whatsappUrl = getWhatsAppUrl();
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 100);
@@ -92,7 +94,6 @@ export function Hero() {
           <a
             href={whatsappUrl}
             target="_blank"
-
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-3 border border-[#25D366]/45 text-[#25D366]/80 px-12 py-4 tracking-[0.2em] uppercase text-xs hover:border-[#25D366]/80 hover:bg-[#25D366]/8 transition-all duration-300 min-w-[240px]"
             style={{ fontFamily: "Raleway, sans-serif" }}

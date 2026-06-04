@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown } from "lucide-react";
-import { getPricing, type PricingCategory, type PriceItem } from "../../lib/store";
-
-type Category = PricingCategory;
-
+import { getPricing, type PricingCategory, getWhatsAppUrl } from "../../lib/store";
 
 export function Pricing() {
   const categories = getPricing();
   const [active, setActive] = useState(categories[0]?.id ?? "coupe");
+  const whatsappUrl = getWhatsAppUrl();
 
   const scrollToBooking = (serviceName?: string) => {
     if (serviceName) localStorage.setItem("aviator_selected_service", serviceName);
@@ -200,7 +198,6 @@ export function Pricing() {
           <a
             href={whatsappUrl}
             target="_blank"
-
             rel="noopener noreferrer"
             className="border border-[#25D366]/40 text-[#25D366]/80 px-12 py-4 text-xs tracking-[0.25em] uppercase hover:border-[#25D366]/70 hover:bg-[#25D366]/8 transition-all duration-300 flex items-center gap-3"
             style={{ fontFamily: "Raleway, sans-serif" }}

@@ -1,4 +1,5 @@
 import { ChevronUp, Instagram, Facebook } from "lucide-react";
+import { getWhatsAppUrl, getDisplayPhone } from "../../lib/store";
 
 const navSections = [
   {
@@ -20,10 +21,10 @@ const navSections = [
   },
 ];
 
-const WHATSAPP_URL =
-  "https://wa.me/212659659715?text=Bonjour%20AVIATOR%20Barber%20Shop%2C%20je%20souhaite%20fixer%20un%20rendez-vous";
-
 export function Footer() {
+  const whatsappUrl = getWhatsAppUrl();
+  const displayPhone = getDisplayPhone();
+
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
@@ -80,13 +81,12 @@ export function Footer() {
             <a
               href={whatsappUrl}
               target="_blank"
-
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2.5 border border-[#25D366]/30 text-[#25D366]/70 text-[10px] tracking-[0.2em] uppercase px-5 py-2.5 hover:bg-[#25D366]/8 hover:border-[#25D366]/55 transition-all duration-300"
               style={{ fontFamily: "Raleway, sans-serif" }}
             >
               <WhatsAppIcon />
-              0659 659 715
+              {displayPhone}
             </a>
           </div>
 
