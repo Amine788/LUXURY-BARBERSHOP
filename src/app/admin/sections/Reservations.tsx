@@ -10,7 +10,6 @@ import {
   deleteReservation,
   type Reservation,
 } from "../../../lib/store";
-import { supabase, isSupabaseReady } from "../../../lib/db";
 
 const STATUS_CONFIG = {
   "En attente": {
@@ -46,21 +45,11 @@ export function Reservations() {
     }
   }, []);
 
-  // Chargement initial
+  // Chargement initial + polling toutes les 30s (remplace le temps réel Supabase)
   useEffect(() => { refresh(); }, [refresh]);
-
-  // Supabase Realtime — mise à jour automatique quand un client réserve
   useEffect(() => {
-    if (!isSupabaseReady) return;
-    const channel = supabase
-      .channel("reservations_realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reservations" },
-        () => { refresh(); }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(refresh, 30000);
+    return () => clearInterval(interval);
   }, [refresh]);
 
   const handleStatus = async (id: string, status: Reservation["status"]) => {
@@ -103,9 +92,7 @@ export function Reservations() {
           </h2>
           <p className="text-[#f0ebe0]/40 text-xs tracking-wider mt-1">
             {reservations.length} réservation{reservations.length !== 1 ? "s" : ""} au total
-            {isSupabaseReady && (
-              <span className="ml-2 text-emerald-400/60 text-[9px]">● Temps réel</span>
-            )}
+            <span className="ml-2 text-[#D4AF37]/40 text-[9px]">● Actualisation auto</span>
           </p>
         </div>
         <button

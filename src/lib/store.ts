@@ -36,11 +36,21 @@ export interface Reservation {
   status: "En attente" | "Confirmé" | "Annulé";
 }
 
-// ─── Supabase client ──────────────────────────────────────────────────────────
+// ─── URL de base de l'API PHP ────────────────────────────────────────────────
+// En développement local, remplacez par l'URL de votre serveur PHP local
+// En production (Hostinger), gardez '/api' (chemin relatif)
+const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
-import { supabase, isSupabaseReady } from "./db";
+async function apiFetch(path: string, options?: RequestInit) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
+  return res.json();
+}
 
-// ─── Default barbers ──────────────────────────────────────────────────────────
+// ─── Default barbers (fallback si API indisponible) ───────────────────────────
 
 export const DEFAULT_BARBERS: Barber[] = [
   {
@@ -187,42 +197,31 @@ const LS = {
 const DEFAULT_PHONE      = "212659659715";
 const DEFAULT_DISP_PHONE = "05 28 32 63 64";
 
-/** Récupère le numéro WhatsApp (Supabase puis localStorage) */
 export async function getContactPhone(): Promise<string> {
-  if (isSupabaseReady) {
-    const { data } = await supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "whatsapp_phone")
-      .single();
+  try {
+    const data = await apiFetch('/settings.php?key=whatsapp_phone');
     if (data?.value) return data.value;
-  }
+  } catch { /* fallback */ }
   return localStorage.getItem(LS.contact) ?? DEFAULT_PHONE;
 }
 
-/** Récupère le numéro WhatsApp synchrone (localStorage uniquement, pour init rapide) */
 export function getContactPhoneSync(): string {
   return localStorage.getItem(LS.contact) ?? DEFAULT_PHONE;
 }
 
 export async function saveContactPhone(phone: string): Promise<void> {
   localStorage.setItem(LS.contact, phone);
-  if (isSupabaseReady) {
-    await supabase
-      .from("settings")
-      .upsert({ key: "whatsapp_phone", value: phone });
-  }
+  await apiFetch('/settings.php', {
+    method: 'PUT',
+    body: JSON.stringify({ key: 'whatsapp_phone', value: phone }),
+  });
 }
 
 export async function getDisplayPhone(): Promise<string> {
-  if (isSupabaseReady) {
-    const { data } = await supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "display_phone")
-      .single();
+  try {
+    const data = await apiFetch('/settings.php?key=display_phone');
     if (data?.value) return data.value;
-  }
+  } catch { /* fallback */ }
   return localStorage.getItem(LS.contactDisp) ?? DEFAULT_DISP_PHONE;
 }
 
@@ -232,11 +231,10 @@ export function getDisplayPhoneSync(): string {
 
 export async function saveDisplayPhone(phone: string): Promise<void> {
   localStorage.setItem(LS.contactDisp, phone);
-  if (isSupabaseReady) {
-    await supabase
-      .from("settings")
-      .upsert({ key: "display_phone", value: phone });
-  }
+  await apiFetch('/settings.php', {
+    method: 'PUT',
+    body: JSON.stringify({ key: 'display_phone', value: phone }),
+  });
 }
 
 export function getWhatsAppUrl(message?: string): string {
@@ -248,14 +246,10 @@ export function getWhatsAppUrl(message?: string): string {
 // ─── Barbers ──────────────────────────────────────────────────────────────────
 
 export async function getBarbers(): Promise<Barber[]> {
-  if (isSupabaseReady) {
-    const { data, error } = await supabase
-      .from("barbers")
-      .select("name, title, specialty, experience, photo, tag")
-      .order("sort_order", { ascending: true });
-    if (!error && data && data.length > 0) return data as Barber[];
-  }
-  // Fallback localStorage
+  try {
+    const data = await apiFetch('/barbers.php');
+    if (Array.isArray(data) && data.length > 0) return data as Barber[];
+  } catch { /* fallback */ }
   try {
     const raw = localStorage.getItem(LS.barbers);
     if (raw) return JSON.parse(raw) as Barber[];
@@ -263,7 +257,6 @@ export async function getBarbers(): Promise<Barber[]> {
   return DEFAULT_BARBERS;
 }
 
-/** Version synchrone pour les initialisations rapides (localStorage uniquement) */
 export function getBarbersSync(): Barber[] {
   try {
     const raw = localStorage.getItem(LS.barbers);
@@ -273,39 +266,20 @@ export function getBarbersSync(): Barber[] {
 }
 
 export async function saveBarbers(barbers: Barber[]): Promise<void> {
-  // Toujours persister en localStorage comme cache rapide
   localStorage.setItem(LS.barbers, JSON.stringify(barbers));
-  if (!isSupabaseReady) return;
-
-  // Supprimer tous les barbiers existants et réinsérer
-  await supabase.from("barbers").delete().neq("id", 0);
-  const rows = barbers.map((b, i) => ({ ...b, sort_order: i }));
-  await supabase.from("barbers").insert(rows);
+  await apiFetch('/barbers.php', {
+    method: 'POST',
+    body: JSON.stringify(barbers),
+  });
 }
 
 // ─── Reservations ─────────────────────────────────────────────────────────────
 
 export async function getReservations(): Promise<Reservation[]> {
-  if (isSupabaseReady) {
-    const { data, error } = await supabase
-      .from("reservations")
-      .select("*")
-      .order("submitted_at", { ascending: false });
-    if (!error && data) {
-      return data.map((r) => ({
-        id:          r.id,
-        submittedAt: r.submitted_at,
-        name:        r.name,
-        phone:       r.phone,
-        service:     r.service,
-        barber:      r.barber ?? "",
-        date:        r.date,
-        time:        r.time,
-        status:      r.status,
-      })) as Reservation[];
-    }
-  }
-  // Fallback localStorage
+  try {
+    const data = await apiFetch('/reservations.php');
+    if (Array.isArray(data)) return data as Reservation[];
+  } catch { /* fallback */ }
   try {
     const raw = localStorage.getItem(LS.reservations);
     if (raw) return JSON.parse(raw) as Reservation[];
@@ -316,19 +290,13 @@ export async function getReservations(): Promise<Reservation[]> {
 export async function addReservation(
   data: Omit<Reservation, "id" | "submittedAt" | "status">
 ): Promise<void> {
-  if (isSupabaseReady) {
-    await supabase.from("reservations").insert({
-      name:    data.name,
-      phone:   data.phone,
-      service: data.service,
-      barber:  data.barber,
-      date:    data.date,
-      time:    data.time,
-      status:  "En attente",
+  try {
+    await apiFetch('/reservations.php', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
     return;
-  }
-  // Fallback localStorage
+  } catch { /* fallback localStorage */ }
   const reservations = await getReservations();
   const newRes: Reservation = {
     ...data,
@@ -344,11 +312,13 @@ export async function updateReservationStatus(
   id: string,
   status: Reservation["status"]
 ): Promise<void> {
-  if (isSupabaseReady) {
-    await supabase.from("reservations").update({ status }).eq("id", id);
+  try {
+    await apiFetch('/reservations.php', {
+      method: 'PUT',
+      body: JSON.stringify({ id, status }),
+    });
     return;
-  }
-  // Fallback localStorage
+  } catch { /* fallback */ }
   const reservations = await getReservations();
   const idx = reservations.findIndex((r) => r.id === id);
   if (idx !== -1) {
@@ -358,10 +328,12 @@ export async function updateReservationStatus(
 }
 
 export async function deleteReservation(id: string): Promise<void> {
-  if (isSupabaseReady) {
-    await supabase.from("reservations").delete().eq("id", id);
+  try {
+    await apiFetch(`/reservations.php?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
     return;
-  }
+  } catch { /* fallback */ }
   const reservations = (await getReservations()).filter((r) => r.id !== id);
   localStorage.setItem(LS.reservations, JSON.stringify(reservations));
 }
@@ -369,35 +341,10 @@ export async function deleteReservation(id: string): Promise<void> {
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 
 export async function getPricing(): Promise<PricingCategory[]> {
-  if (isSupabaseReady) {
-    const { data: cats, error: catErr } = await supabase
-      .from("pricing_categories")
-      .select("id, label, icon")
-      .order("sort_order", { ascending: true });
-
-    const { data: items, error: itemErr } = await supabase
-      .from("pricing_items")
-      .select("category_id, name, price, description, popular, from_price")
-      .order("sort_order", { ascending: true });
-
-    if (!catErr && !itemErr && cats && items && cats.length > 0) {
-      return cats.map((cat) => ({
-        id:    cat.id,
-        label: cat.label,
-        icon:  cat.icon,
-        items: items
-          .filter((it) => it.category_id === cat.id)
-          .map((it) => ({
-            name:      it.name,
-            price:     it.price,
-            desc:      it.description,
-            popular:   it.popular ?? false,
-            fromPrice: it.from_price ?? false,
-          })),
-      })) as PricingCategory[];
-    }
-  }
-  // Fallback localStorage
+  try {
+    const data = await apiFetch('/pricing.php');
+    if (Array.isArray(data) && data.length > 0) return data as PricingCategory[];
+  } catch { /* fallback */ }
   try {
     const raw = localStorage.getItem(LS.pricing);
     if (raw) return JSON.parse(raw) as PricingCategory[];
@@ -406,47 +353,22 @@ export async function getPricing(): Promise<PricingCategory[]> {
 }
 
 export async function savePricing(categories: PricingCategory[]): Promise<void> {
-  // Cache local
   localStorage.setItem(LS.pricing, JSON.stringify(categories));
-  if (!isSupabaseReady) return;
-
-  // Upsert categories
-  await supabase.from("pricing_categories").upsert(
-    categories.map((c, i) => ({ id: c.id, label: c.label, icon: c.icon, sort_order: i }))
-  );
-
-  // Supprimer tous les items et réinsérer
-  await supabase.from("pricing_items").delete().neq("id", 0);
-  const rows = categories.flatMap((cat, _ci) =>
-    cat.items.map((item, ii) => ({
-      category_id: cat.id,
-      sort_order:  ii,
-      name:        item.name,
-      price:       item.price,
-      description: item.desc,
-      popular:     item.popular ?? false,
-      from_price:  item.fromPrice ?? false,
-    }))
-  );
-  if (rows.length > 0) {
-    await supabase.from("pricing_items").insert(rows);
-  }
+  await apiFetch('/pricing.php', {
+    method: 'POST',
+    body: JSON.stringify(categories),
+  });
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function login(password: string): Promise<boolean> {
-  if (isSupabaseReady) {
-    const { data } = await supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "admin_password")
-      .single();
+  try {
+    const data = await apiFetch('/settings.php?key=admin_password');
     const ok = data?.value === password;
     if (ok) localStorage.setItem(LS.auth, "true");
     return ok;
-  }
-  // Fallback hardcodé
+  } catch { /* fallback hardcodé */ }
   const ok = password === "aviator2024";
   if (ok) localStorage.setItem(LS.auth, "true");
   return ok;

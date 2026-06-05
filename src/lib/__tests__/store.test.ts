@@ -8,16 +8,16 @@ import {
   DEFAULT_BARBERS
 } from '../store';
 
-vi.mock('../db', () => ({
-  supabase: null,
-  isSupabaseReady: false
-}));
+// Mock fetch pour simuler les réponses de l'API PHP
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('Store', () => {
   beforeEach(() => {
     localStorage.clear();
-    // Clear all mocks if any
     vi.clearAllMocks();
+    // Par défaut, fetch échoue pour forcer le fallback localStorage
+    mockFetch.mockRejectedValue(new Error('API not available'));
   });
 
   it('should return default barbers when localStorage is empty', () => {
@@ -31,20 +31,38 @@ describe('Store', () => {
   });
 
   describe('Auth', () => {
-    it('should login with correct password', async () => {
-      // Assuming 'aviator2024' is the default fallback password when Supabase is not configured
+    it('should login with correct password via API', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ value: 'aviator2024' }),
+      });
+      const result = await login('aviator2024');
+      expect(result).toBe(true);
+      expect(isAuthenticated()).toBe(true);
+    });
+
+    it('should fallback to hardcoded password when API fails', async () => {
+      mockFetch.mockRejectedValue(new Error('API not available'));
       const result = await login('aviator2024');
       expect(result).toBe(true);
       expect(isAuthenticated()).toBe(true);
     });
 
     it('should fail login with incorrect password', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ value: 'aviator2024' }),
+      });
       const result = await login('wrongpassword');
       expect(result).toBe(false);
       expect(isAuthenticated()).toBe(false);
     });
 
     it('should logout correctly', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ value: 'aviator2024' }),
+      });
       await login('aviator2024');
       expect(isAuthenticated()).toBe(true);
       logout();

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import { afterEach } from 'vitest';
 
 // Cleanup DOM after each test
 afterEach(() => {
@@ -15,7 +15,8 @@ class MockIntersectionObserver {
 }
 window.IntersectionObserver = MockIntersectionObserver as any;
 
-// Mock import.meta.env for Supabase
-vi.stubEnv('VITE_SUPABASE_URL', 'https://mock.supabase.co');
-vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'mock-key');
-
+// Mock fetch globalement pour tous les tests (remplace Supabase)
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ([]),
+}) as any;
