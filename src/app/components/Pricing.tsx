@@ -1,17 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown } from "lucide-react";
 import { getPricing, type PricingCategory, getWhatsAppUrl } from "../../lib/store";
+import { useAsync } from "../../lib/hooks/useAsync";
 
 export function Pricing() {
-  const categories = getPricing();
-  const [active, setActive] = useState(categories[0]?.id ?? "coupe");
+  const { data: categories = [], loading } = useAsync(getPricing);
+  const [active, setActive] = useState<string>("");
   const whatsappUrl = getWhatsAppUrl();
 
   const scrollToBooking = (serviceName?: string) => {
     if (serviceName) localStorage.setItem("aviator_selected_service", serviceName);
     document.getElementById("booking")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (categories.length > 0 && !active) {
+      setActive(categories[0].id);
+    }
+  }, [categories, active]);
+
+  if (loading || categories.length === 0) {
+    return null; // ou un spinner
+  }
 
   const activeCategory = categories.find((c) => c.id === active) ?? categories[0];
 

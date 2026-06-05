@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plus, Trash2, Save, Check, Edit2, X, Crown, Star,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Loader2,
 } from "lucide-react";
 import {
   getPricing, savePricing,
@@ -10,7 +10,8 @@ import {
 } from "../../../lib/store";
 
 export function PricingManager() {
-  const [categories, setCategories] = useState<PricingCategory[]>(getPricing);
+  const [categories, setCategories] = useState<PricingCategory[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [editingItem, setEditingItem] = useState<{ catIdx: number; itemIdx: number } | null>(null);
   const [draftItem, setDraftItem] = useState<PriceItem | null>(null);
@@ -18,63 +19,78 @@ export function PricingManager() {
   const [newItem, setNewItem] = useState<PriceItem>({ name: "", price: "", desc: "" });
   const [saved, setSaved] = useState(false);
 
-  const persist = (updated: PricingCategory[]) => {
+  useEffect(() => {
+    getPricing().then((data) => {
+      setCategories(data);
+      setLoading(false);
+    });
+  }, []);
+
+  const persist = async (updated: PricingCategory[]) => {
     setCategories(updated);
-    savePricing(updated);
+    await savePricing(updated);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // ── Edit item ────────────────────────────────────────────────────────────────
+  // ── Edit item ──────────────────────────────────────────────────────────────
   const startEdit = (catIdx: number, itemIdx: number) => {
     setEditingItem({ catIdx, itemIdx });
     setDraftItem({ ...categories[catIdx].items[itemIdx] });
     setAddingItem(null);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingItem || !draftItem) return;
     const updated = categories.map((cat, ci) =>
       ci === editingItem.catIdx
         ? { ...cat, items: cat.items.map((item, ii) => (ii === editingItem.itemIdx ? draftItem : item)) }
         : cat
     );
-    persist(updated);
+    await persist(updated);
     setEditingItem(null);
     setDraftItem(null);
   };
 
   const cancelEdit = () => { setEditingItem(null); setDraftItem(null); };
 
-  // ── Delete item ──────────────────────────────────────────────────────────────
-  const deleteItem = (catIdx: number, itemIdx: number) => {
+  // ── Delete item ────────────────────────────────────────────────────────────
+  const deleteItem = async (catIdx: number, itemIdx: number) => {
     const updated = categories.map((cat, ci) =>
       ci === catIdx ? { ...cat, items: cat.items.filter((_, ii) => ii !== itemIdx) } : cat
     );
-    persist(updated);
+    await persist(updated);
     if (editingItem?.catIdx === catIdx && editingItem?.itemIdx === itemIdx) cancelEdit();
   };
 
-  // ── Add item ─────────────────────────────────────────────────────────────────
-  const confirmAdd = (catIdx: number) => {
+  // ── Add item ───────────────────────────────────────────────────────────────
+  const confirmAdd = async (catIdx: number) => {
     if (!newItem.name || !newItem.price) return;
     const updated = categories.map((cat, ci) =>
       ci === catIdx ? { ...cat, items: [...cat.items, { ...newItem }] } : cat
     );
-    persist(updated);
+    await persist(updated);
     setAddingItem(null);
     setNewItem({ name: "", price: "", desc: "" });
   };
 
-  // ── Move item ────────────────────────────────────────────────────────────────
-  const moveItem = (catIdx: number, itemIdx: number, dir: -1 | 1) => {
+  // ── Move item ──────────────────────────────────────────────────────────────
+  const moveItem = async (catIdx: number, itemIdx: number, dir: -1 | 1) => {
     const items = [...categories[catIdx].items];
     const target = itemIdx + dir;
     if (target < 0 || target >= items.length) return;
     [items[itemIdx], items[target]] = [items[target], items[itemIdx]];
     const updated = categories.map((cat, ci) => (ci === catIdx ? { ...cat, items } : cat));
-    persist(updated);
+    await persist(updated);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 size={32} className="text-[#D4AF37]/40 animate-spin" />
+      </div>
+    );
+  }
 
   const cat = categories[activeTab];
 
@@ -223,7 +239,6 @@ export function PricingManager() {
             return (
               <div key={ii} className={`border-b border-[#D4AF37]/8 last:border-b-0 transition-all duration-200 ${isEditing ? "bg-[#D4AF37]/[0.04]" : "hover:bg-[#D4AF37]/[0.02]"}`}>
                 {isEditing && draftItem ? (
-                  /* Edit form */
                   <div className="px-6 py-5 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
@@ -275,7 +290,6 @@ export function PricingManager() {
                     </div>
                   </div>
                 ) : (
-                  /* Display row */
                   <div className="flex items-center gap-4 px-6 py-4">
                     {/* Order controls */}
                     <div className="flex flex-col gap-0.5">

@@ -1,9 +1,10 @@
 import { motion } from "motion/react";
 import { Instagram } from "lucide-react";
 import { getBarbers, type Barber } from "../../lib/store";
+import { useAsync } from "../../lib/hooks/useAsync";
 
 export function Team() {
-  const barbers = getBarbers();
+  const { data: barbers = [] } = useAsync(getBarbers);
 
   return (
     <section id="team" className="py-36 bg-[#030706]">

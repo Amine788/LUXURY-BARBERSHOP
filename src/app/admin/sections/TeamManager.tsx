@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Save, Edit2, X, Check, ImageIcon, User, Plus, Trash2 } from "lucide-react";
+import { Save, Edit2, X, Check, ImageIcon, User, Plus, Trash2, Loader2 } from "lucide-react";
 import { getBarbers, saveBarbers, type Barber } from "../../../lib/store";
 
 export function TeamManager() {
-  const [barbers, setBarbers] = useState<Barber[]>(getBarbers);
+  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Barber | null>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    getBarbers().then((data) => {
+      setBarbers(data);
+      setLoading(false);
+    });
+  }, []);
 
   const startEdit = (index: number) => {
     setEditingId(index);
@@ -19,38 +28,51 @@ export function TeamManager() {
     setDraft(null);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (draft === null || editingId === null) return;
     const updated = barbers.map((b, i) => (i === editingId ? draft : b));
-    setBarbers(updated);
-    saveBarbers(updated);
-    setEditingId(null);
-    setDraft(null);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    try {
+      await saveBarbers(updated);
+      setBarbers(updated);
+      setEditingId(null);
+      setDraft(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const addMember = () => {
+  const addMember = async () => {
     const newBarber: Barber = {
-      name: "Nouveau Barbier",
-      title: "Expert Barber",
-      specialty: "Spécialiste Coupe & Style",
+      name:       "Nouveau Barbier",
+      title:      "Expert Barber",
+      specialty:  "Spécialiste Coupe & Style",
       experience: "5+ Ans",
-      photo: "",
-      tag: "Expert Barber",
+      photo:      "",
+      tag:        "Expert Barber",
     };
     const updated = [...barbers, newBarber];
     setBarbers(updated);
-    saveBarbers(updated);
+    await saveBarbers(updated);
     startEdit(updated.length - 1);
   };
 
-  const deleteMember = (index: number) => {
+  const deleteMember = async (index: number) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer ce barbier ?")) return;
     const updated = barbers.filter((_, i) => i !== index);
     setBarbers(updated);
-    saveBarbers(updated);
+    await saveBarbers(updated);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 size={32} className="text-[#D4AF37]/40 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -212,9 +234,11 @@ export function TeamManager() {
                       <div className="flex gap-2 pt-1">
                         <button
                           onClick={saveEdit}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-[#D4AF37] text-[#040809] py-2.5 text-[9px] tracking-[0.25em] uppercase hover:bg-[#c9a632] transition-colors font-bold"
+                          disabled={saving}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-[#D4AF37] text-[#040809] py-2.5 text-[9px] tracking-[0.25em] uppercase hover:bg-[#c9a632] transition-colors font-bold disabled:opacity-60"
                         >
-                          <Save size={11} /> Sauvegarder
+                          {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
+                          Sauvegarder
                         </button>
                         <button
                           onClick={cancelEdit}
@@ -250,4 +274,3 @@ export function TeamManager() {
     </div>
   );
 }
-

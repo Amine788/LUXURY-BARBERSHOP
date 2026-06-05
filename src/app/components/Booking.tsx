@@ -1,29 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { User, Phone, ChevronDown, Calendar, Clock, Check } from "lucide-react";
-import { addReservation, getBarbers, getWhatsAppUrl } from "../../lib/store";
-
-const staff = getBarbers().map((b) => ({ name: b.name, photo: b.photo }));
-
-const services = [
-  "Coupe",
-  "Coupe + Barbe",
-  "Traçage de Barbe",
-  "Rasage à l'Ancienne",
-  "Coupe Enfant",
-  "Soins Visage Simple",
-  "Soins Visage Global (Hydrafacial)",
-  "Soin Botox Capillaire",
-  "Soin Vapeur",
-  "Coloration Cheveux",
-  "Mèches",
-  "Coloration Barbe",
-  "Shampooing & Brushing",
-  "Soins Protéine",
-  "Manucure",
-  "Pédicure",
-  "Pack Full Experience (700 DH)",
-];
+import { User, Phone, ChevronDown, Calendar, Clock, Check, Loader2 } from "lucide-react";
+import { addReservation, getBarbers, getPricing, getWhatsAppUrl } from "../../lib/store";
+import { useAsync } from "../../lib/hooks/useAsync";
 
 const timeSlots = [
   "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -41,6 +20,12 @@ const selectCls =
   "w-full bg-[#040809] border border-[#D4AF37]/14 pl-10 pr-9 py-4 text-[#f0ebe0]/80 focus:border-[#D4AF37]/45 outline-none transition-colors duration-300 appearance-none text-sm";
 
 export function Booking() {
+  const { data: barbers = [] } = useAsync(getBarbers);
+  const { data: categories = [] } = useAsync(getPricing);
+
+  const staff = barbers.map((b) => ({ name: b.name, photo: b.photo }));
+  const services = categories.flatMap((c) => c.items.map((i) => i.name));
+
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -50,10 +35,11 @@ export function Booking() {
     time: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const preselected = localStorage.getItem("aviator_selected_service");
-    if (preselected) {
+    if (preselected && services.length > 0) {
       const match = services.find((s) =>
         s.toLowerCase().includes(preselected.toLowerCase()) ||
         preselected.toLowerCase().includes(s.toLowerCase().split(" ")[0])
@@ -61,23 +47,28 @@ export function Booking() {
       setForm((prev) => ({ ...prev, service: match || preselected }));
       localStorage.removeItem("aviator_selected_service");
     }
-  }, []);
+  }, [services]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addReservation({
-      name: form.name,
-      phone: form.phone,
-      service: form.service,
-      barber: form.barber,
-      date: form.date,
-      time: form.time,
-    });
-    setSubmitted(true);
+    setLoading(true);
+    try {
+      await addReservation({
+        name:    form.name,
+        phone:   form.phone,
+        service: form.service,
+        barber:  form.barber,
+        date:    form.date,
+        time:    form.time,
+      });
+      setSubmitted(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -365,10 +356,18 @@ export function Booking() {
             <div className="md:col-span-2 pt-3 space-y-3">
               <button
                 type="submit"
-                className="w-full bg-[#D4AF37] text-[#040809] py-5 text-xs tracking-[0.3em] uppercase hover:bg-[#c9a632] transition-all duration-300 hover:shadow-xl hover:shadow-[#D4AF37]/20"
+                disabled={loading}
+                className="w-full bg-[#D4AF37] text-[#040809] py-5 text-xs tracking-[0.3em] uppercase hover:bg-[#c9a632] transition-all duration-300 hover:shadow-xl hover:shadow-[#D4AF37]/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                 style={{ fontFamily: "Raleway, sans-serif", fontWeight: 700 }}
               >
-                Confirmer la Réservation
+                {loading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Envoi en cours…
+                  </>
+                ) : (
+                  "Confirmer la Réservation"
+                )}
               </button>
 
               <a

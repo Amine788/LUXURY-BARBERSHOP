@@ -1,5 +1,6 @@
 import { ChevronUp, Instagram, Facebook } from "lucide-react";
 import { getWhatsAppUrl, getDisplayPhone } from "../../lib/store";
+import { useAsync } from "../../lib/hooks/useAsync";
 
 const navSections = [
   {
@@ -23,7 +24,7 @@ const navSections = [
 
 export function Footer() {
   const whatsappUrl = getWhatsAppUrl();
-  const displayPhone = getDisplayPhone();
+  const { data: displayPhone = "05 28 32 63 64" } = useAsync(getDisplayPhone);
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });

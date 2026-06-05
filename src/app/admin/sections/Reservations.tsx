@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Calendar, Clock, User, Phone, Scissors,
-  Trash2, CheckCircle, XCircle, AlertCircle, RefreshCw,
+  Trash2, CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2,
 } from "lucide-react";
 import {
   getReservations,
@@ -10,6 +10,7 @@ import {
   deleteReservation,
   type Reservation,
 } from "../../../lib/store";
+import { supabase, isSupabaseReady } from "../../../lib/db";
 
 const STATUS_CONFIG = {
   "En attente": {
@@ -30,20 +31,46 @@ const STATUS_CONFIG = {
 };
 
 export function Reservations() {
-  const [reservations, setReservations] = useState<Reservation[]>(getReservations);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Reservation["status"] | "Tous">("Tous");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const refresh = useCallback(() => setReservations(getReservations()), []);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getReservations();
+      setReservations(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleStatus = (id: string, status: Reservation["status"]) => {
-    updateReservationStatus(id, status);
+  // Chargement initial
+  useEffect(() => { refresh(); }, [refresh]);
+
+  // Supabase Realtime — mise à jour automatique quand un client réserve
+  useEffect(() => {
+    if (!isSupabaseReady) return;
+    const channel = supabase
+      .channel("reservations_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reservations" },
+        () => { refresh(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [refresh]);
+
+  const handleStatus = async (id: string, status: Reservation["status"]) => {
+    await updateReservationStatus(id, status);
     refresh();
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
-      deleteReservation(id);
+      await deleteReservation(id);
       setDeleteConfirm(null);
       refresh();
     } else {
@@ -57,10 +84,10 @@ export function Reservations() {
     : reservations.filter((r) => r.status === filter);
 
   const counts = {
-    Tous: reservations.length,
+    Tous:         reservations.length,
     "En attente": reservations.filter((r) => r.status === "En attente").length,
-    "Confirmé": reservations.filter((r) => r.status === "Confirmé").length,
-    "Annulé": reservations.filter((r) => r.status === "Annulé").length,
+    "Confirmé":   reservations.filter((r) => r.status === "Confirmé").length,
+    "Annulé":     reservations.filter((r) => r.status === "Annulé").length,
   };
 
   return (
@@ -76,13 +103,17 @@ export function Reservations() {
           </h2>
           <p className="text-[#f0ebe0]/40 text-xs tracking-wider mt-1">
             {reservations.length} réservation{reservations.length !== 1 ? "s" : ""} au total
+            {isSupabaseReady && (
+              <span className="ml-2 text-emerald-400/60 text-[9px]">● Temps réel</span>
+            )}
           </p>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 border border-[#D4AF37]/20 text-[#D4AF37]/60 hover:text-[#D4AF37] hover:border-[#D4AF37]/40 px-4 py-2 text-[10px] tracking-[0.25em] uppercase transition-all duration-200"
+          disabled={loading}
+          className="flex items-center gap-2 border border-[#D4AF37]/20 text-[#D4AF37]/60 hover:text-[#D4AF37] hover:border-[#D4AF37]/40 px-4 py-2 text-[10px] tracking-[0.25em] uppercase transition-all duration-200 disabled:opacity-40"
         >
-          <RefreshCw size={12} />
+          {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           Actualiser
         </button>
       </div>
@@ -113,7 +144,12 @@ export function Reservations() {
       </div>
 
       {/* List */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="border border-[#D4AF37]/10 bg-[#0a110a] p-16 text-center">
+          <Loader2 size={32} className="text-[#D4AF37]/30 mx-auto mb-4 animate-spin" />
+          <p className="text-[#f0ebe0]/30 text-sm tracking-wider">Chargement des réservations…</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="border border-[#D4AF37]/10 bg-[#0a110a] p-16 text-center">
           <Calendar size={32} className="text-[#D4AF37]/20 mx-auto mb-4" />
           <p className="text-[#f0ebe0]/30 text-sm tracking-wider">
@@ -178,7 +214,6 @@ export function Reservations() {
                         {res.status}
                       </span>
 
-                      {/* Change status */}
                       {res.status !== "Confirmé" && (
                         <button
                           onClick={() => handleStatus(res.id, "Confirmé")}

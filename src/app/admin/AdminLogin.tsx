@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Lock, Eye, EyeOff } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { login } from "../../lib/store";
 
 interface Props {
@@ -13,28 +13,40 @@ export function AdminLogin({ onLogin }: Props) {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [shaking, setShaking] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(password)) {
-      onLogin();
-    } else {
-      setError(true);
-      setShaking(true);
-      setTimeout(() => setShaking(false), 500);
+    setLoading(true);
+    setError(false);
+    try {
+      const ok = await login(password);
+      if (ok) {
+        onLogin();
+      } else {
+        setError(true);
+        setShaking(true);
+        setTimeout(() => setShaking(false), 500);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#060b07] flex items-center justify-center px-4"
-      style={{ backgroundImage: "radial-gradient(ellipse at 50% 0%, #014421/20 0%, transparent 60%)" }}>
-      
+    <div
+      className="min-h-screen bg-[#060b07] flex items-center justify-center px-4"
+      style={{ backgroundImage: "radial-gradient(ellipse at 50% 0%, #014421/20 0%, transparent 60%)" }}
+    >
       {/* Background grid */}
-      <div className="absolute inset-0 opacity-[0.025] pointer-events-none"
+      <div
+        className="absolute inset-0 opacity-[0.025] pointer-events-none"
         style={{
-          backgroundImage: "repeating-linear-gradient(0deg, #D4AF37 0, #D4AF37 1px, transparent 0, transparent 60px), repeating-linear-gradient(90deg, #D4AF37 0, #D4AF37 1px, transparent 0, transparent 60px)",
-        }} />
+          backgroundImage:
+            "repeating-linear-gradient(0deg, #D4AF37 0, #D4AF37 1px, transparent 0, transparent 60px), repeating-linear-gradient(90deg, #D4AF37 0, #D4AF37 1px, transparent 0, transparent 60px)",
+        }}
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -87,6 +99,7 @@ export function AdminLogin({ onLogin }: Props) {
                   }`}
                   style={{ fontFamily: "Raleway, sans-serif" }}
                   autoFocus
+                  data-testid="password-input"
                 />
                 <button
                   type="button"
@@ -97,7 +110,11 @@ export function AdminLogin({ onLogin }: Props) {
                 </button>
               </div>
               {error && (
-                <p className="text-red-400/80 text-[10px] tracking-wider mt-2" style={{ fontFamily: "Raleway, sans-serif" }}>
+                <p
+                  className="text-red-400/80 text-[10px] tracking-wider mt-2"
+                  style={{ fontFamily: "Raleway, sans-serif" }}
+                  role="alert"
+                >
                   Mot de passe incorrect
                 </p>
               )}
@@ -105,15 +122,27 @@ export function AdminLogin({ onLogin }: Props) {
 
             <button
               type="submit"
-              className="w-full bg-[#D4AF37] text-[#040809] py-4 text-[10px] tracking-[0.35em] uppercase hover:bg-[#c9a632] transition-all duration-300 hover:shadow-xl hover:shadow-[#D4AF37]/20 mt-2"
+              disabled={loading || !password}
+              className="w-full bg-[#D4AF37] text-[#040809] py-4 text-[10px] tracking-[0.35em] uppercase hover:bg-[#c9a632] transition-all duration-300 hover:shadow-xl hover:shadow-[#D4AF37]/20 mt-2 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               style={{ fontFamily: "Raleway, sans-serif", fontWeight: 700 }}
+              data-testid="login-button"
             >
-              Accéder au tableau de bord
+              {loading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Vérification…
+                </>
+              ) : (
+                "Accéder au tableau de bord"
+              )}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-[#f0ebe0]/20 text-[10px] tracking-wider mt-6" style={{ fontFamily: "Raleway, sans-serif" }}>
+        <p
+          className="text-center text-[#f0ebe0]/20 text-[10px] tracking-wider mt-6"
+          style={{ fontFamily: "Raleway, sans-serif" }}
+        >
           © AVIATOR Barber Shop — Accès restreint
         </p>
       </motion.div>

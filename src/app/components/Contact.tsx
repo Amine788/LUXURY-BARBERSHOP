@@ -1,10 +1,11 @@
 import { motion } from "motion/react";
 import { MapPin, Phone, Clock, Instagram, Facebook } from "lucide-react";
 import { getWhatsAppUrl, getDisplayPhone } from "../../lib/store";
+import { useAsync } from "../../lib/hooks/useAsync";
 
 export function Contact() {
   const WHATSAPP_URL = getWhatsAppUrl();
-  const displayPhone = getDisplayPhone();
+  const { data: displayPhone = "05 28 32 63 64" } = useAsync(getDisplayPhone);
 
   const contactInfo = [
     {
