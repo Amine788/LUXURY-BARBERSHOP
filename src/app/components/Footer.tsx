@@ -1,39 +1,45 @@
 import { ChevronUp, Instagram, Facebook } from "lucide-react";
 import { getWhatsAppUrl, getDisplayPhone } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
-
-const navSections = [
-  {
-    title: "Explorer",
-    items: [
-      { label: "À Propos", id: "about" },
-      { label: "Notre Équipe", id: "team" },
-      { label: "Services", id: "services" },
-      { label: "Avis Clients", id: "testimonials" },
-    ],
-  },
-  {
-    title: "Réserver",
-    items: [
-      { label: "Carte des Prix", id: "pricing" },
-      { label: "Prendre Rendez-vous", id: "booking" },
-      { label: "Nous Contacter", id: "contact" },
-    ],
-  },
-];
+import { useI18n } from "../../lib/i18n/context";
 
 export function Footer() {
   const whatsappUrl = getWhatsAppUrl();
   const { data: displayPhone = "05 28 32 63 64" } = useAsync(getDisplayPhone);
+  const { t, isRTL, language } = useI18n();
+
+  const navSections = [
+    {
+      title: language === 'ar' ? 'استكشف' : language === 'en' ? 'Explore' : 'Explorer',
+      items: [
+        { label: t("nav.about"), id: "about" },
+        { label: t("nav.team"), id: "team" },
+        { label: t("nav.services"), id: "services" },
+        { label: language === 'ar' ? 'آراء العملاء' : language === 'en' ? 'Testimonials' : 'Avis Clients', id: "testimonials" },
+      ],
+    },
+    {
+      title: language === 'ar' ? 'احجز' : language === 'en' ? 'Book' : 'Réserver',
+      items: [
+        { label: t("pricing.title"), id: "pricing" },
+        { label: t("hero.cta"), id: "booking" },
+        { label: t("nav.contact"), id: "contact" },
+      ],
+    },
+  ];
 
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
+  const brandDesc = language === 'ar' ? 'صالون حلاقة رجالي متميز في أكادير - أكثر من مجرد حلاقة، بصمة أسلوب.' :
+    language === 'en' ? "Premium men's hair salon in Agadir — more than a haircut, a style signature." :
+    "Salon de coiffure homme premium à Agadir — plus qu'une coupe, une signature de style.";
+
   return (
-    <footer className="bg-[#020504] border-t border-[#D4AF37]/8">
+    <footer className={`bg-[#020504] border-t border-[#D4AF37]/8 ${isRTL ? 'text-right' : 'text-left'}`}>
       <div className="max-w-7xl mx-auto px-6 pt-20 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-14 mb-16">
+        <div className={`grid grid-cols-1 md:grid-cols-4 gap-14 mb-16 ${isRTL ? 'md:flex md:flex-row-reverse md:justify-between' : ''}`}>
           {/* Brand column */}
           <div className="md:col-span-2">
             <div className="mb-5">
@@ -45,7 +51,7 @@ export function Footer() {
               </p>
               <p
                 className="text-[#f0ebe0]/40 tracking-[0.5em] text-[9px] uppercase mt-1"
-                style={{ fontFamily: "Raleway, sans-serif" }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
                 Barber Shop
               </p>
@@ -53,13 +59,13 @@ export function Footer() {
 
             <p
               className="text-[#f0ebe0]/28 text-sm leading-relaxed max-w-64 mb-8"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
-              Salon de coiffure homme premium à Agadir — plus qu'une coupe, une signature de style.
+              {brandDesc}
             </p>
 
             {/* Social */}
-            <div className="flex gap-3 mb-6">
+            <div className={`flex gap-3 mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
               {[
                 { label: "Instagram", href: "https://www.instagram.com/aviator_b.r/", icon: <Instagram size={20} strokeWidth={1.5} /> },
                 { label: "TikTok", href: "https://www.tiktok.com/@aviator_b.r?_r=1&_t=ZS-96tnjQwsnOH", icon: <TikTokIcon size={20} /> },
@@ -83,8 +89,8 @@ export function Footer() {
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 border border-[#25D366]/30 text-[#25D366]/70 text-[10px] tracking-[0.2em] uppercase px-5 py-2.5 hover:bg-[#25D366]/8 hover:border-[#25D366]/55 transition-all duration-300"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              className={`inline-flex items-center gap-2.5 border border-[#25D366]/30 text-[#25D366]/70 text-[10px] tracking-[0.2em] uppercase px-5 py-2.5 hover:bg-[#25D366]/8 hover:border-[#25D366]/55 transition-all duration-300 ${isRTL ? 'flex-row-reverse' : ''}`}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
               <WhatsAppIcon />
               {displayPhone}
@@ -96,7 +102,7 @@ export function Footer() {
             <div key={section.title}>
               <h4
                 className="text-[#D4AF37]/50 text-[10px] tracking-[0.35em] uppercase mb-7"
-                style={{ fontFamily: "Raleway, sans-serif" }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
                 {section.title}
               </h4>
@@ -105,8 +111,8 @@ export function Footer() {
                   <li key={id}>
                     <button
                       onClick={() => scrollTo(id)}
-                      className="text-[#f0ebe0]/30 text-sm hover:text-[#D4AF37]/70 transition-colors duration-300 text-left"
-                      style={{ fontFamily: "Raleway, sans-serif" }}
+                      className={`text-[#f0ebe0]/30 text-sm hover:text-[#D4AF37]/70 transition-colors duration-300 ${isRTL ? 'text-right w-full' : 'text-left'}`}
+                      style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                     >
                       {label}
                     </button>
@@ -121,17 +127,17 @@ export function Footer() {
         <div className="h-px bg-gradient-to-r from-transparent via-[#D4AF37]/15 to-transparent mb-8" />
 
         {/* Bottom bar */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-6">
+        <div className={`flex flex-col md:flex-row items-center justify-between gap-4 ${isRTL ? 'md:flex-row-reverse' : ''}`}>
+          <div className={`flex flex-wrap items-center gap-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <p
               className="text-[#f0ebe0]/18 text-xs tracking-wider"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
-              © 2026 AVIATOR Barber Shop. Tous droits réservés.
+              © 2026 AVIATOR Barber Shop. {language === 'ar' ? 'جميع الحقوق محفوظة.' : language === 'en' ? 'All rights reserved.' : 'Tous droits réservés.'}
             </p>
             <p
               className="text-[#f0ebe0]/18 text-xs tracking-wider hidden sm:block"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
               EL HOUDA, Agadir
             </p>

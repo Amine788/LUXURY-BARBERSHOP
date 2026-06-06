@@ -1,0 +1,18 @@
+Options -MultiViews
+RewriteEngine On
+RewriteBase /luxury-barbershop/
+
+# Ne pas réécrire les fichiers PHP et les assets existants
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/luxury-barbershop/api/
+
+# Tout rediriger vers index.html (React Router)
+RewriteRule ^ index.html [QSA,L]
+
+# Autoriser les headers CORS pour l'API PHP
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type"
+</IfModule>

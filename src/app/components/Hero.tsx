@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { getWhatsAppUrl } from "../../lib/store";
+import { useI18n } from "../../lib/i18n/context";
 
 const heroBg = "https://res.cloudinary.com/dfltnm8qu/image/upload/q_100,f_auto,w_1920/v1780483010/WhatsApp_Image_2026-06-03_at_10.44.35_2_smhigf.jpg";
 
 export function Hero() {
   const [loaded, setLoaded] = useState(false);
   const whatsappUrl = getWhatsAppUrl();
+  const { t, isRTL } = useI18n();
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 100);
@@ -60,7 +62,7 @@ export function Hero() {
           </h1>
           <p
             className="text-[#f0ebe0]/60 tracking-[0.7em] text-[11px] uppercase mt-3"
-            style={{ fontFamily: "Raleway, sans-serif" }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
           >
             Barber Shop
           </p>
@@ -71,10 +73,10 @@ export function Hero() {
           initial={{ opacity: 0, y: 12 }}
           animate={loaded ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.9, delay: 0.75 }}
-          className="text-[#f0ebe0]/45 tracking-[0.5em] text-[10px] uppercase mb-14"
-          style={{ fontFamily: "Raleway, sans-serif" }}
+          className="text-[#f0ebe0]/45 tracking-[0.5em] text-[10px] uppercase mb-14 px-4"
+          style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
         >
-          Plus qu'une coupe, une signature de style — Agadir
+          {t("hero.tagline")}
         </motion.p>
 
         {/* CTAs */}
@@ -87,19 +89,19 @@ export function Hero() {
           <button
             onClick={() => scrollTo("booking")}
             className="bg-[#D4AF37] text-[#060b07] px-12 py-4 tracking-[0.3em] uppercase text-xs hover:bg-[#c9a632] transition-all duration-300 hover:shadow-2xl hover:shadow-[#D4AF37]/25 min-w-[240px]"
-            style={{ fontFamily: "Raleway, sans-serif", fontWeight: 700 }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif", fontWeight: 700 }}
           >
-            Réserver Maintenant
+            {t("hero.cta")}
           </button>
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-3 border border-[#25D366]/45 text-[#25D366]/80 px-12 py-4 tracking-[0.2em] uppercase text-xs hover:border-[#25D366]/80 hover:bg-[#25D366]/8 transition-all duration-300 min-w-[240px]"
-            style={{ fontFamily: "Raleway, sans-serif" }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
           >
             <WhatsAppIcon />
-            WhatsApp Us
+            {t("hero.whatsapp")}
           </a>
         </motion.div>
 

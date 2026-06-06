@@ -2,23 +2,12 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Reservations } from '../Reservations';
 import * as store from '../../../../lib/store';
-import { isSupabaseReady } from '../../../../lib/db';
 
 // Mock Dependencies
 vi.mock('../../../../lib/store', () => ({
   getReservations: vi.fn(),
   updateReservationStatus: vi.fn(),
   deleteReservation: vi.fn(),
-}));
-
-vi.mock('../../../../lib/db', () => ({
-  supabase: {
-    channel: vi.fn().mockReturnThis(),
-    on: vi.fn().mockReturnThis(),
-    subscribe: vi.fn(),
-    removeChannel: vi.fn(),
-  },
-  isSupabaseReady: true,
 }));
 
 describe('Reservations Component', () => {

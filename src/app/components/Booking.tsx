@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { User, Phone, ChevronDown, Calendar, Clock, Check, Loader2 } from "lucide-react";
 import { addReservation, getBarbers, getPricing, getWhatsAppUrl } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
+import { useI18n } from "../../lib/i18n/context";
 
 const timeSlots = [
   "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -10,8 +11,6 @@ const timeSlots = [
   "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
   "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
 ];
-
-const WHATSAPP_BASE = getWhatsAppUrl();
 
 const fieldLabel = "text-[#D4AF37]/55 text-[10px] tracking-[0.3em] uppercase mb-2 block";
 const inputCls =
@@ -22,6 +21,7 @@ const selectCls =
 export function Booking() {
   const { data: barbers = [] } = useAsync(getBarbers);
   const { data: categories = [] } = useAsync(getPricing);
+  const { t, isRTL, language } = useI18n();
 
   const staff = barbers.map((b) => ({ name: b.name, photo: b.photo }));
   const services = categories.flatMap((c) => c.items.map((i) => i.name));
@@ -74,7 +74,14 @@ export function Booking() {
   const today = new Date().toISOString().split("T")[0];
 
   const buildWhatsAppUrl = () => {
-    const msg = `Bonjour AVIATOR Barbershop, je souhaite réserver :\n• Service : ${form.service || "À discuter"}\n• Barbier : ${form.barber || "Pas de préférence"}\n• Date : ${form.date || "À discuter"}\n• Heure : ${form.time || "À discuter"}\nMon nom est ${form.name} et mon numéro est ${form.phone}.`;
+    let msg = "";
+    if (language === 'ar') {
+      msg = `مرحباً أفياتور باربر شوب، أود حجز موعد :\n• الخدمة : ${form.service || "للنقاش"}\n• الحلاق : ${form.barber || "بدون تفضيل"}\n• التاريخ : ${form.date || "للنقاش"}\n• الوقت : ${form.time || "للنقاش"}\nاسمي هو ${form.name} ورقمي هو ${form.phone}.`;
+    } else if (language === 'en') {
+      msg = `Hello AVIATOR Barbershop, I would like to book:\n• Service: ${form.service || "To discuss"}\n• Barber: ${form.barber || "No preference"}\n• Date: ${form.date || "To discuss"}\n• Time: ${form.time || "To discuss"}\nMy name is ${form.name} and my number is ${form.phone}.`;
+    } else {
+      msg = `Bonjour AVIATOR Barbershop, je souhaite réserver :\n• Service : ${form.service || "À discuter"}\n• Barbier : ${form.barber || "Pas de préférence"}\n• Date : ${form.date || "À discuter"}\n• Heure : ${form.time || "À discuter"}\nMon nom est ${form.name} et mon numéro est ${form.phone}.`;
+    }
     return getWhatsAppUrl(msg);
   };
 
@@ -95,9 +102,9 @@ export function Booking() {
             <div className="h-px w-16 bg-[#D4AF37]/35" />
             <span
               className="text-[#D4AF37]/70 tracking-[0.45em] text-[10px] uppercase"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
-              Réservation
+              {language === 'ar' ? 'حجز' : 'Réservation'}
             </span>
             <div className="h-px w-16 bg-[#D4AF37]/35" />
           </div>
@@ -109,14 +116,17 @@ export function Booking() {
               fontWeight: 700,
             }}
           >
-            Prenez{" "}
-            <em style={{ color: "#D4AF37", fontStyle: "italic" }}>Rendez-vous</em>
+            {isRTL ? (
+              <>احجز <em style={{ color: "#D4AF37", fontStyle: "italic" }}>موعدك</em></>
+            ) : (
+              <>{language === 'en' ? 'Book Your ' : 'Prenez '} <em style={{ color: "#D4AF37", fontStyle: "italic" }}>{language === 'en' ? 'Appointment' : 'Rendez-vous'}</em></>
+            )}
           </h2>
           <p
             className="text-[#f0ebe0]/35 mt-5 text-xs tracking-wider"
-            style={{ fontFamily: "Raleway, sans-serif" }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
           >
-            Remplissez le formulaire ou contactez-nous directement via WhatsApp
+            {t("booking.subtitle")}
           </p>
         </div>
 
@@ -133,15 +143,13 @@ export function Booking() {
               className="text-[#f0ebe0] mb-4"
               style={{ fontFamily: "Playfair Display, serif", fontSize: "1.7rem", fontWeight: 700 }}
             >
-              Demande Envoyée
+              {language === 'ar' ? 'تم إرسال الطلب' : language === 'en' ? 'Request Sent' : 'Demande Envoyée'}
             </h3>
             <p
               className="text-[#f0ebe0]/50 mb-8 text-sm leading-relaxed max-w-sm mx-auto"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
-              Merci, {form.name}. Notre équipe confirmera votre rendez-vous{" "}
-              <span className="text-[#D4AF37]/80">{form.service}</span>
-              {form.barber ? <> avec <span className="text-[#D4AF37]/80">{form.barber}</span></> : ""} par téléphone sous 2h.
+              {t("booking.form.success")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <a
@@ -149,17 +157,17 @@ export function Booking() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 bg-[#25D366] text-white px-8 py-3.5 text-xs tracking-[0.2em] uppercase hover:bg-[#22c35e] transition-colors"
-                style={{ fontFamily: "Raleway, sans-serif", fontWeight: 700 }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif", fontWeight: 700 }}
               >
                 <WhatsAppIcon />
-                Confirmer via WhatsApp
+                {language === 'ar' ? 'التأكيد عبر واتساب' : language === 'en' ? 'Confirm via WhatsApp' : 'Confirmer via WhatsApp'}
               </a>
               <button
                 onClick={() => setSubmitted(false)}
                 className="border border-[#D4AF37]/35 text-[#D4AF37] px-8 py-3.5 text-xs tracking-[0.25em] uppercase hover:bg-[#D4AF37]/8 transition-colors"
-                style={{ fontFamily: "Raleway, sans-serif" }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
-                Nouvelle Réservation
+                {language === 'ar' ? 'حجز جديد' : language === 'en' ? 'New Booking' : 'Nouvelle Réservation'}
               </button>
             </div>
           </motion.div>
@@ -173,75 +181,75 @@ export function Booking() {
           >
             {/* Name */}
             <div>
-              <label className={fieldLabel} style={{ fontFamily: "Raleway, sans-serif" }}>
-                Nom Complet
+              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {t("booking.form.name")}
               </label>
               <div className="relative">
-                <User size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <User size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <input
                   type="text"
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   required
-                  placeholder="Votre nom complet"
-                  className={inputCls}
-                  style={{ fontFamily: "Raleway, sans-serif" }}
+                  placeholder={t("booking.form.name")}
+                  className={`${inputCls} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+                  style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 />
               </div>
             </div>
 
             {/* Phone */}
             <div>
-              <label className={fieldLabel} style={{ fontFamily: "Raleway, sans-serif" }}>
-                Numéro de Téléphone
+              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {t("booking.form.phone")}
               </label>
               <div className="relative">
-                <Phone size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <Phone size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <input
                   type="tel"
                   name="phone"
                   value={form.phone}
                   onChange={handleChange}
                   required
-                  placeholder="05 XX XX XX XX"
-                  className={inputCls}
-                  style={{ fontFamily: "Raleway, sans-serif" }}
+                  placeholder="06 XX XX XX XX"
+                  className={`${inputCls} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+                  style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 />
               </div>
             </div>
 
             {/* Service */}
             <div>
-              <label className={fieldLabel} style={{ fontFamily: "Raleway, sans-serif" }}>
-                Service
+              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {t("booking.form.service")}
               </label>
               <div className="relative">
-                <ChevronDown size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <ChevronDown size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <select
                   name="service"
                   value={form.service}
                   onChange={handleChange}
                   required
-                  className={selectCls}
-                  style={{ fontFamily: "Raleway, sans-serif" }}
+                  className={`${selectCls} ${isRTL ? 'pr-10 pl-9' : 'pl-10 pr-9'}`}
+                  style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 >
-                  <option value="" disabled className="bg-[#040809]">Choisir un service</option>
+                  <option value="" disabled className="bg-[#040809]">{t("booking.form.service")}</option>
                   {services.map((s) => (
                     <option key={s} value={s} className="bg-[#040809]">{s}</option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <ChevronDown size={14} className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
               </div>
             </div>
 
             {/* Date */}
             <div>
-              <label className={fieldLabel} style={{ fontFamily: "Raleway, sans-serif" }}>
-                Date Souhaitée
+              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {t("booking.form.date")}
               </label>
               <div className="relative">
-                <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <Calendar size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <input
                   type="date"
                   name="date"
@@ -249,40 +257,40 @@ export function Booking() {
                   onChange={handleChange}
                   required
                   min={today}
-                  className={`${inputCls} [color-scheme:dark]`}
-                  style={{ fontFamily: "Raleway, sans-serif" }}
+                  className={`${inputCls} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} [color-scheme:dark]`}
+                  style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 />
               </div>
             </div>
 
             {/* Time */}
             <div className="md:col-span-2">
-              <label className={fieldLabel} style={{ fontFamily: "Raleway, sans-serif" }}>
-                Heure Souhaitée
+              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {t("booking.form.time")}
               </label>
               <div className="relative">
-                <Clock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <Clock size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <select
                   name="time"
                   value={form.time}
                   onChange={handleChange}
                   required
-                  className={selectCls}
-                  style={{ fontFamily: "Raleway, sans-serif" }}
+                  className={`${selectCls} ${isRTL ? 'pr-10 pl-9' : 'pl-10 pr-9'}`}
+                  style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 >
-                  <option value="" disabled className="bg-[#040809]">Choisir un créneau</option>
+                  <option value="" disabled className="bg-[#040809]">{t("booking.form.time")}</option>
                   {timeSlots.map((t) => (
                     <option key={t} value={t} className="bg-[#040809]">{t}</option>
                   ))}
                 </select>
-                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
+                <ChevronDown size={14} className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
               </div>
             </div>
 
             {/* Staff selector */}
             <div className="md:col-span-2">
-              <label className={fieldLabel} style={{ fontFamily: "Raleway, sans-serif" }}>
-                Choisir votre Barbier <span className="text-[#f0ebe0]/25 normal-case tracking-normal">(optionnel)</span>
+              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {t("booking.form.barber")}
               </label>
               <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
                 {/* No preference card */}
@@ -306,9 +314,9 @@ export function Booking() {
                   </div>
                   <span
                     className={`text-[8px] tracking-wider text-center leading-tight ${form.barber === "" ? "text-[#D4AF37]" : "text-[#f0ebe0]/35"}`}
-                    style={{ fontFamily: "Raleway, sans-serif" }}
+                    style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                   >
-                    Sans préf.
+                    {t("booking.form.noPreference")}
                   </span>
                 </button>
 
@@ -342,7 +350,7 @@ export function Booking() {
                       </div>
                       <span
                         className={`text-[8px] tracking-wider text-center leading-tight ${isSelected ? "text-[#D4AF37]" : "text-[#f0ebe0]/35"}`}
-                        style={{ fontFamily: "Raleway, sans-serif" }}
+                        style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                       >
                         {member.name.split(" ")[0]}
                       </span>
@@ -358,34 +366,34 @@ export function Booking() {
                 type="submit"
                 disabled={loading}
                 className="w-full bg-[#D4AF37] text-[#040809] py-5 text-xs tracking-[0.3em] uppercase hover:bg-[#c9a632] transition-all duration-300 hover:shadow-xl hover:shadow-[#D4AF37]/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                style={{ fontFamily: "Raleway, sans-serif", fontWeight: 700 }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif", fontWeight: 700 }}
               >
                 {loading ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    Envoi en cours…
+                    {t("booking.form.loading")}
                   </>
                 ) : (
-                  "Confirmer la Réservation"
+                  t("booking.form.submit")
                 )}
               </button>
 
               <a
-                href={WHATSAPP_BASE}
+                href={getWhatsAppUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-3 w-full border border-[#25D366]/35 text-[#25D366]/80 py-4 text-xs tracking-[0.25em] uppercase hover:bg-[#25D366]/8 hover:border-[#25D366]/60 transition-all duration-300"
-                style={{ fontFamily: "Raleway, sans-serif" }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
                 <WhatsAppIcon />
-                Réserver directement via WhatsApp
+                {language === 'ar' ? 'الحجز مباشرة عبر واتساب' : language === 'en' ? 'Book directly via WhatsApp' : 'Réserver directement via WhatsApp'}
               </a>
 
               <p
                 className="text-center text-[#f0ebe0]/22 text-[10px] tracking-wider pt-1"
-                style={{ fontFamily: "Raleway, sans-serif" }}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
-                Notre équipe confirme les réservations par téléphone ou WhatsApp sous 2h
+                {language === 'ar' ? 'يقوم فريقنا بتأكيد الحجوزات عبر الهاتف أو واتساب في غضون ساعتين' : language === 'en' ? 'Our team confirms bookings by phone or WhatsApp within 2h' : 'Notre équipe confirme les réservations par téléphone ou WhatsApp sous 2h'}
               </p>
             </div>
           </motion.form>

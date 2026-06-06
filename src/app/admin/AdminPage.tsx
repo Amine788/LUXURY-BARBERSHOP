@@ -7,8 +7,9 @@ import { Reservations } from "./sections/Reservations";
 import { TeamManager } from "./sections/TeamManager";
 import { PricingManager } from "./sections/PricingManager";
 import { Settings } from "./sections/Settings";
+import { Dashboard } from "./sections/Dashboard";
 
-type Tab = "reservations" | "team" | "pricing" | "settings";
+type Tab = "dashboard" | "reservations" | "team" | "pricing" | "settings";
 
 interface Props {
   onLogout: () => void;
@@ -17,7 +18,7 @@ interface Props {
 const logoImg = "https://res.cloudinary.com/dfltnm8qu/image/upload/v1780490163/IMG_7660.JPG__2_-removebg-preview_vyoxd3.png";
 
 export function AdminPage({ onLogout }: Props) {
-  const [tab, setTab] = useState<Tab>("reservations");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -26,6 +27,7 @@ export function AdminPage({ onLogout }: Props) {
   };
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "dashboard", label: "Vue d'ensemble", icon: <BarChart3 size={16} /> },
     { id: "reservations", label: "Réservations", icon: <Calendar size={16} /> },
     { id: "team", label: "Équipe", icon: <Users size={16} /> },
     { id: "pricing", label: "Tarifs", icon: <Tag size={16} /> },
@@ -115,6 +117,7 @@ export function AdminPage({ onLogout }: Props) {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-6">
+          {tab === "dashboard" && <Dashboard />}
           {tab === "reservations" && <Reservations />}
           {tab === "team" && <TeamManager />}
           {tab === "pricing" && <PricingManager />}

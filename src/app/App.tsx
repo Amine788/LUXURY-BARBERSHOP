@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Navbar } from "./components/Navbar";
 import { Hero } from "./components/Hero";
 import { About } from "./components/About";
@@ -15,6 +13,7 @@ import { Footer } from "./components/Footer";
 import { AdminLogin } from "./admin/AdminLogin";
 import { AdminPage } from "./admin/AdminPage";
 import { isAuthenticated, getWhatsAppUrl } from "../lib/store";
+import { I18nProvider } from "../lib/i18n/context";
 
 // ── Main site ─────────────────────────────────────────────────────────────────
 function MainSite() {
@@ -69,16 +68,18 @@ function AdminRoute() {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const basename = window.location.hostname === 'localhost' ? '/luxury-barbershop' : '';
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainSite />} />
-        <Route path="/admin" element={<AdminRoute />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <Analytics />
-      <SpeedInsights />
-    </BrowserRouter>
+    <I18nProvider>
+      <BrowserRouter basename={basename}>
+        <Routes>
+          <Route path="/" element={<MainSite />} />
+          <Route path="/admin" element={<AdminRoute />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </I18nProvider>
   );
 }
 

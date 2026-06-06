@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `reservations` (
   `barber`       VARCHAR(255) NOT NULL DEFAULT '',
   `date`         VARCHAR(20)  NOT NULL,
   `time`         VARCHAR(10)  NOT NULL,
-  `status`       ENUM('En attente','Confirmé','Annulé') NOT NULL DEFAULT 'En attente',
+  `status`       ENUM('En attente','Confirmé','Annulé','Servi') NOT NULL DEFAULT 'En attente',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

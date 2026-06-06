@@ -2,9 +2,11 @@ import { motion } from "motion/react";
 import { Instagram } from "lucide-react";
 import { getBarbers, type Barber } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
+import { useI18n } from "../../lib/i18n/context";
 
 export function Team() {
   const { data: barbers = [] } = useAsync(getBarbers);
+  const { t, isRTL } = useI18n();
 
   return (
     <section id="team" className="py-36 bg-[#030706]">
@@ -14,9 +16,9 @@ export function Team() {
             <div className="h-px w-16 bg-[#D4AF37]/35" />
             <span
               className="text-[#D4AF37]/70 tracking-[0.45em] text-[10px] uppercase"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
-              The Artisans
+              {t("team.title")}
             </span>
             <div className="h-px w-16 bg-[#D4AF37]/35" />
           </div>
@@ -28,15 +30,17 @@ export function Team() {
               fontWeight: 700,
             }}
           >
-            Notre Équipe d'{" "}
-            <em style={{ color: "#D4AF37", fontStyle: "italic" }}>Experts</em>
+            {isRTL ? (
+              <>فريقنا من <em style={{ color: "#D4AF37", fontStyle: "italic" }}>الخبراء</em></>
+            ) : (
+              <>Notre Équipe d' <em style={{ color: "#D4AF37", fontStyle: "italic" }}>Experts</em></>
+            )}
           </h2>
           <p
             className="text-[#f0ebe0]/40 mt-5 text-sm max-w-xl mx-auto leading-relaxed"
-            style={{ fontFamily: "Raleway, sans-serif" }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
           >
-            Sept barbiers professionnels, une seule obsession — la perfection. Chaque artisan AVIATOR
-            est sélectionné pour son expertise, sa précision et sa passion du grooming masculin haut de gamme.
+            {t("team.subtitle")}
           </p>
         </div>
 
@@ -57,6 +61,12 @@ function BarberCard({
   barber: Barber;
   index: number;
 }) {
+  const { isRTL, language } = useI18n();
+
+  // Simple mapping for titles/specialties if needed
+  const displayTitle = language === 'fr' ? barber.title : 
+    language === 'ar' ? "حلاق خبير" : "Expert Barber";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 32 }}
@@ -80,17 +90,17 @@ function BarberCard({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#030706]/95 via-[#030706]/30 to-transparent" />
 
-        <div className="absolute top-4 left-4">
+        <div className={`absolute top-4 ${isRTL ? 'right-4' : 'left-4'}`}>
           <span
             className="bg-[#D4AF37]/15 backdrop-blur-sm border border-[#D4AF37]/30 text-[#D4AF37] px-3 py-1 text-[9px] tracking-[0.25em] uppercase"
-            style={{ fontFamily: "Raleway, sans-serif" }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
           >
-            {barber.tag}
+            {language === 'ar' ? 'خبير' : barber.tag}
           </span>
         </div>
 
 
-        <div className="absolute bottom-0 left-0 right-0 p-6">
+        <div className={`absolute bottom-0 left-0 right-0 p-6 ${isRTL ? 'text-right' : 'text-left'}`}>
           <h3
             className="text-[#f0ebe0] mb-1"
             style={{ fontFamily: "Playfair Display, serif", fontSize: "1.2rem", fontWeight: 700 }}
@@ -99,15 +109,15 @@ function BarberCard({
           </h3>
           <p
             className="text-[#D4AF37]/70 text-[10px] tracking-[0.2em] uppercase mb-3"
-            style={{ fontFamily: "Raleway, sans-serif" }}
+            style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
           >
-            {barber.title}
+            {displayTitle}
           </p>
 
           <div className="overflow-hidden max-h-0 group-hover:max-h-20 transition-all duration-500">
             <p
               className="text-[#f0ebe0]/55 text-xs mb-4 leading-relaxed"
-              style={{ fontFamily: "Raleway, sans-serif" }}
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
               {barber.specialty}
             </p>
@@ -115,17 +125,19 @@ function BarberCard({
               href="https://www.instagram.com/aviator_b.r/"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-[#D4AF37]/70 text-[9px] tracking-[0.2em] uppercase hover:text-[#D4AF37] transition-colors"
+              className={`flex items-center gap-2 text-[#D4AF37]/70 text-[9px] tracking-[0.2em] uppercase hover:text-[#D4AF37] transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
             >
               <Instagram size={12} />
-              <span style={{ fontFamily: "Raleway, sans-serif" }}>Follow</span>
+              <span style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
+                {language === 'ar' ? 'تابعنا' : 'Follow'}
+              </span>
             </a>
           </div>
         </div>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="absolute top-0 left-0 bottom-0 w-px bg-[#D4AF37] opacity-0 group-hover:opacity-20 transition-opacity duration-500" />
+      <div className={`absolute top-0 ${isRTL ? 'right-0' : 'left-0'} bottom-0 w-px bg-[#D4AF37] opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
     </motion.div>
   );
 }

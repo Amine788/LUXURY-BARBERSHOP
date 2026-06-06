@@ -15,7 +15,7 @@ class MockIntersectionObserver {
 }
 window.IntersectionObserver = MockIntersectionObserver as any;
 
-// Mock fetch globalement pour tous les tests (remplace Supabase)
+// Mock fetch globalement pour tous les tests
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
   json: async () => ([]),

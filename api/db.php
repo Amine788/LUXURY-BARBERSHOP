@@ -3,9 +3,9 @@
 // Modifiez ces 4 valeurs avec vos identifiants Hostinger (phpMyAdmin)
 
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'votre_base_de_donnees');   // ← à changer
-define('DB_USER', 'votre_utilisateur');        // ← à changer
-define('DB_PASS', 'votre_mot_de_passe');       // ← à changer
+define('DB_NAME', 'aviator_barbershop');  // ← nom de votre BDD dans phpMyAdmin
+define('DB_USER', 'root');                // ← XAMPP: root | Hostinger: votre user
+define('DB_PASS', '');                    // ← XAMPP: vide | Hostinger: votre mdp
 define('DB_CHARSET', 'utf8mb4');
 
 function getPDO(): PDO {

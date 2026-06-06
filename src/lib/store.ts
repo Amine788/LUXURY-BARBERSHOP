@@ -33,13 +33,14 @@ export interface Reservation {
   barber: string;
   date: string;
   time: string;
-  status: "En attente" | "Confirmé" | "Annulé";
+  status: "En attente" | "Confirmé" | "Annulé" | "Servi";
 }
 
 // ─── URL de base de l'API PHP ────────────────────────────────────────────────
-// En développement local, remplacez par l'URL de votre serveur PHP local
-// En production (Hostinger), gardez '/api' (chemin relatif)
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
+// En développement local (XAMPP), utilisez '/luxury-barbershop/api'
+// En production (Hostinger), utilisez '/api'
+const API_BASE = import.meta.env.VITE_API_BASE ?? 
+  (window.location.hostname === 'localhost' ? '/luxury-barbershop/api' : '/api');
 
 async function apiFetch(path: string, options?: RequestInit) {
   const res = await fetch(`${API_BASE}${path}`, {

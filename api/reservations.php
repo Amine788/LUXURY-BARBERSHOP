@@ -63,7 +63,7 @@ elseif ($method === 'PUT') {
     $id     = $data['id']     ?? null;
     $status = $data['status'] ?? null;
 
-    $allowed = ['En attente', 'Confirmé', 'Annulé'];
+    $allowed = ['En attente', 'Confirmé', 'Annulé', 'Servi'];
     if (!$id || !$status || !in_array($status, $allowed)) {
         http_response_code(400);
         echo json_encode(['error' => 'id ou status invalide']);
