@@ -1,5 +1,4 @@
 import { motion } from "motion/react";
-import { Instagram } from "lucide-react";
 import { getBarbers, type Barber } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
 import { useI18n } from "../../lib/i18n/context";
