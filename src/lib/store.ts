@@ -55,7 +55,7 @@ async function apiFetch(path: string, options?: RequestInit) {
 
 export const DEFAULT_BARBERS: Barber[] = [
   {
-    name: "Barbier",
+    name: "HICHAM DIRECTEUR",
     title: "Expert Barber",
     specialty: "Spécialiste Coupe & Style Masculin",
     experience: "5+ Ans",
@@ -63,7 +63,7 @@ export const DEFAULT_BARBERS: Barber[] = [
     tag: "Expert Barber",
   },
   {
-    name: "Ayman",
+    name: "MOHAMED",
     title: "Expert Barber",
     specialty: "Spécialiste Fade & Dégradé Moderne",
     experience: "5+ Ans",
@@ -71,7 +71,7 @@ export const DEFAULT_BARBERS: Barber[] = [
     tag: "Expert Barber",
   },
   {
-    name: "Zakaria",
+    name: "LARBI",
     title: "Expert Barber",
     specialty: "Expert Coupe Classique & Barbe Traditionnelle",
     experience: "5+ Ans",
@@ -79,7 +79,7 @@ export const DEFAULT_BARBERS: Barber[] = [
     tag: "Expert Barber",
   },
   {
-    name: "Laarbi",
+    name: "OTHMANE",
     title: "Expert Barber",
     specialty: "Spécialiste Soins Visage & Capillaires",
     experience: "5+ Ans",
@@ -87,7 +87,7 @@ export const DEFAULT_BARBERS: Barber[] = [
     tag: "Expert Barber",
   },
   {
-    name: "Oussama",
+    name: "AYMEN",
     title: "Expert Barber",
     specialty: "Expert Coloration & Transformation de Style",
     experience: "5+ Ans",
@@ -95,7 +95,7 @@ export const DEFAULT_BARBERS: Barber[] = [
     tag: "Expert Barber",
   },
   {
-    name: "Othmane",
+    name: "OUSSAMA",
     title: "Expert Barber",
     specialty: "Spécialiste Fade & Dégradé Moderne",
     experience: "5+ Ans",
@@ -103,7 +103,7 @@ export const DEFAULT_BARBERS: Barber[] = [
     tag: "Expert Barber",
   },
   {
-    name: "Abdellatif",
+    name: "ABDELLATIF",
     title: "Expert Barber",
     specialty: "Expert Coupe Classique & Barbe Traditionnelle",
     experience: "5+ Ans",
