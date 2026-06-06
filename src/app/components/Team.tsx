@@ -120,17 +120,6 @@ function BarberCard({
             >
               {barber.specialty}
             </p>
-            <a
-              href="https://www.instagram.com/aviator_b.r/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center gap-2 text-[#D4AF37]/70 text-[9px] tracking-[0.2em] uppercase hover:text-[#D4AF37] transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
-            >
-              <Instagram size={12} />
-              <span style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
-                {language === 'ar' ? 'تابعنا' : 'Follow'}
-              </span>
-            </a>
           </div>
         </div>
       </div>
