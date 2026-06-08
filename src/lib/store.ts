@@ -417,22 +417,39 @@ export async function savePricing(categories: PricingCategory[]): Promise<void> 
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
+const FALLBACK_PASSWORD = "aviator2024";
+
 export async function login(password: string): Promise<boolean> {
+  // Essayer d'abord via l'API PHP
   try {
-    const data = await apiFetch('/login.php', {
+    const res = await fetch(`${API_BASE}/login.php`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     });
-    if (data?.token) {
-      localStorage.setItem(LS.auth, "true");
-      localStorage.setItem(LS.token, data.token);
-      return true;
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.token) {
+        localStorage.setItem(LS.auth, "true");
+        localStorage.setItem(LS.token, data.token);
+        return true;
+      }
     }
-    return false;
+
+    // L'API a répondu (ex: 401 mot de passe incorrect) — pas de fallback
+    if (res.status === 401) {
+      return false;
+    }
+
+    // L'API a répondu avec une autre erreur (500, etc.)
+    // → on tente le fallback avec le mot de passe codé en dur
+    throw new Error(`API error: ${res.status}`);
+
   } catch (err) {
-    console.error("Login error:", err);
-    // Fallback local uniquement en développement si l'API est absente
-    if (window.location.hostname === 'localhost' && password === "aviator2024") {
+    console.warn("API login inaccessible, tentative de fallback:", err);
+    // Fallback : mot de passe codé en dur si l'API est inaccessible
+    if (password === FALLBACK_PASSWORD) {
       localStorage.setItem(LS.auth, "true");
       localStorage.setItem(LS.token, "local-dev-token");
       return true;
