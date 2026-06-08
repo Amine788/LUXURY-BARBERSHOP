@@ -44,9 +44,12 @@ const API_BASE = import.meta.env.VITE_API_BASE ??
 
 async function apiFetch(path: string, options?: RequestInit) {
   const token = localStorage.getItem(LS.token);
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: Record<string, string> = {};
+
+  // Ne pas mettre Content-Type si c'est du FormData (le navigateur s'en charge avec le boundary)
+  if (!(options?.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -71,6 +74,34 @@ async function apiFetch(path: string, options?: RequestInit) {
   }
 
   return res.json();
+}
+
+export async function uploadPhoto(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('photo', file);
+  
+  const data = await apiFetch('/upload.php', {
+    method: 'POST',
+    body: formData,
+  });
+  
+  return data.url;
+}
+
+/**
+ * Retourne l'URL complète d'une image
+ */
+export function getImageUrl(path: string): string {
+  if (!path) return "";
+  if (path.startsWith('http')) return path;
+  
+  // Si le chemin commence par 'api/uploads', on doit s'assurer que l'URL est correcte
+  // On utilise l'URL de base moins le suffixe '/api' pour pointer vers la racine si besoin, 
+  // ou on utilise simplement le chemin relatif si on est sur le même domaine.
+  
+  // Pour la robustesse, on reconstruit l'URL à partir de API_BASE
+  const base = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
+  return `${base}/${path}`;
 }
 
 // ─── Default barbers (fallback si API indisponible) ───────────────────────────

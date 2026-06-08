@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { getBarbers, type Barber } from "../../lib/store";
+import { getBarbers, getImageUrl, type Barber } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
 import { useI18n } from "../../lib/i18n/context";
 
@@ -76,7 +76,7 @@ function BarberCard({
     >
       <div className="relative h-[420px] overflow-hidden">
         <img
-          src={barber.photo}
+          src={getImageUrl(barber.photo)}
           alt={barber.name}
           className="w-full h-full object-cover object-top transition-transform duration-700"
           style={{ transform: "scale(1)" }}

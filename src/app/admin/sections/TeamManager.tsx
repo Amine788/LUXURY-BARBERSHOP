@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Save, Edit2, X, Check, ImageIcon, User, Plus, Trash2, Loader2 } from "lucide-react";
-import { getBarbers, saveBarbers, type Barber } from "../../../lib/store";
+import { Save, Edit2, X, Check, ImageIcon, User, Plus, Trash2, Loader2, Upload } from "lucide-react";
+import { getBarbers, saveBarbers, uploadPhoto, getImageUrl, type Barber } from "../../../lib/store";
 
 export function TeamManager() {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Barber | null>(null);
   const [saved, setSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getBarbers().then((data) => {
@@ -17,6 +19,23 @@ export function TeamManager() {
       setLoading(false);
     });
   }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !draft) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadPhoto(file);
+      setDraft({ ...draft, photo: url });
+    } catch (err) {
+      alert("Erreur lors de l'upload de l'image");
+      console.error(err);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const startEdit = (index: number) => {
     setEditingId(index);
@@ -128,11 +147,11 @@ export function TeamManager() {
                   isEditing ? "border-[#D4AF37]/40" : "border-[#D4AF37]/10 hover:border-[#D4AF37]/25"
                 }`}
               >
-                {/* Photo */}
+                  {/* Photo */}
                 <div className="relative h-52 overflow-hidden bg-[#040809]">
                   {current.photo ? (
                     <img
-                      src={current.photo}
+                      src={getImageUrl(current.photo)}
                       alt={current.name}
                       className="w-full h-full object-cover object-top"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
@@ -143,6 +162,32 @@ export function TeamManager() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a110a] to-transparent" />
+                  
+                  {isEditing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="flex flex-col items-center gap-2 text-[#D4AF37] hover:text-[#f0ebe0] transition-colors"
+                      >
+                        {uploading ? (
+                          <Loader2 size={24} className="animate-spin" />
+                        ) : (
+                          <>
+                            <Upload size={24} />
+                            <span className="text-[10px] uppercase tracking-widest font-bold">Changer la photo</span>
+                          </>
+                        )}
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        accept="image/*" 
+                        className="hidden" 
+                      />
+                    </div>
+                  )}
 
                   {/* Actions buttons */}
                   <div className="absolute top-3 right-3 flex gap-2">
@@ -199,25 +244,8 @@ export function TeamManager() {
                         </div>
                       </div>
 
-                      {/* Photo URL field */}
-                      <div>
-                        <label className="text-[#D4AF37]/55 text-[9px] tracking-[0.3em] uppercase block mb-1.5">
-                          URL de la photo
-                        </label>
-                        <div className="relative">
-                          <ImageIcon size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none" />
-                          <input
-                            type="url"
-                            value={draft.photo}
-                            onChange={(e) => setDraft({ ...draft, photo: e.target.value })}
-                            className="w-full bg-[#040809] border border-[#D4AF37]/20 pl-8 pr-3 py-2.5 text-[#f0ebe0] text-xs focus:border-[#D4AF37]/50 outline-none transition-colors"
-                            placeholder="https://..."
-                          />
-                        </div>
-                      </div>
-
                       {/* Specialty field */}
-                      <div>
+                      <div className="pt-2">
                         <label className="text-[#D4AF37]/55 text-[9px] tracking-[0.3em] uppercase block mb-1.5">
                           Spécialité
                         </label>
