@@ -43,11 +43,33 @@ const API_BASE = import.meta.env.VITE_API_BASE ??
   (window.location.hostname === 'localhost' ? '/luxury-barbershop/api' : '/api');
 
 async function apiFetch(path: string, options?: RequestInit) {
+  const token = localStorage.getItem(LS.token);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: { ...headers, ...options?.headers },
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
+
+  if (res.status === 401) {
+    // Si l'API renvoie 401, on déconnecte l'utilisateur localement
+    logout();
+    if (!path.includes('/login.php')) {
+      window.location.reload(); // Recharger pour rediriger vers login
+    }
+  }
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `API error ${res.status}: ${path}`);
+  }
+
   return res.json();
 }
 
@@ -188,6 +210,7 @@ const LS = {
   barbers:      "aviator_barbers",
   reservations: "aviator_reservations",
   auth:         "aviator_admin_auth",
+  token:        "aviator_admin_token",
   pricing:      "aviator_pricing",
   contact:      "aviator_contact",
   contactDisp:  "aviator_contact_display",
@@ -365,20 +388,32 @@ export async function savePricing(categories: PricingCategory[]): Promise<void> 
 
 export async function login(password: string): Promise<boolean> {
   try {
-    const data = await apiFetch('/settings.php?key=admin_password');
-    const ok = data?.value === password;
-    if (ok) localStorage.setItem(LS.auth, "true");
-    return ok;
-  } catch { /* fallback hardcodé */ }
-  const ok = password === "aviator2024";
-  if (ok) localStorage.setItem(LS.auth, "true");
-  return ok;
+    const data = await apiFetch('/login.php', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+    if (data?.token) {
+      localStorage.setItem(LS.auth, "true");
+      localStorage.setItem(LS.token, data.token);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error("Login error:", err);
+    // Fallback local uniquement en développement si l'API est absente
+    if (window.location.hostname === 'localhost' && password === "aviator2024") {
+      localStorage.setItem(LS.auth, "true");
+      return true;
+    }
+    return false;
+  }
 }
 
 export function logout(): void {
   localStorage.removeItem(LS.auth);
+  localStorage.removeItem(LS.token);
 }
 
 export function isAuthenticated(): boolean {
-  return localStorage.getItem(LS.auth) === "true";
+  return localStorage.getItem(LS.auth) === "true" && !!localStorage.getItem(LS.token);
 }

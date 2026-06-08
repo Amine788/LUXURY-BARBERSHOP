@@ -8,6 +8,11 @@ define('DB_USER', 'root');                // ← XAMPP: root | Hostinger: votre 
 define('DB_PASS', '');                    // ← XAMPP: vide | Hostinger: votre mdp
 define('DB_CHARSET', 'utf8mb4');
 
+// ─── Sécurité JWT ────────────────────────────────────────────────────────────
+// CHANGEZ CETTE CLÉ en production pour une chaîne longue et aléatoire !
+define('JWT_SECRET', 'aviator_secret_key_2024_change_me_in_production');
+define('JWT_EXPIRY', 3600 * 24); // 24 heures
+
 function getPDO(): PDO {
     static $pdo = null;
     if ($pdo === null) {
@@ -28,9 +33,17 @@ function getPDO(): PDO {
     return $pdo;
 }
 
-// ─── Headers CORS (pour que React puisse contacter l'API) ─────────────────────
+// ─── Headers de Sécurité ──────────────────────────────────────────────────────
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+// Note: Content-Security-Policy peut être restrictif, à adapter selon vos besoins
+// header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;");
+
+// ─── Headers CORS (pour que React puisse contacter l'API) ─────────────────────
+header('Access-Control-Allow-Origin: *'); // En production, mettez votre domaine exact
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 

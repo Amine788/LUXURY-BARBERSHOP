@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_utils.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $pdo = getPDO();
@@ -16,6 +16,7 @@ if ($method === 'GET') {
 
 // ─── POST : Remplacer tous les barbiers ───────────────────────────────────────
 elseif ($method === 'POST') {
+    checkAuth(); // Protection JWT
     $barbers = json_decode(file_get_contents('php://input'), true);
     if (!is_array($barbers)) {
         http_response_code(400);

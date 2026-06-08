@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_utils.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $pdo = getPDO();
@@ -8,12 +8,18 @@ $pdo = getPDO();
 if ($method === 'GET') {
     $key = $_GET['key'] ?? null;
     if ($key) {
+        // Sécurité : Ne jamais renvoyer le mot de passe admin via cette route
+        if ($key === 'admin_password') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Accès interdit']);
+            exit;
+        }
         $stmt = $pdo->prepare("SELECT value FROM settings WHERE `key` = :key");
         $stmt->execute([':key' => $key]);
         $row = $stmt->fetch();
         echo json_encode(['value' => $row ? $row['value'] : null]);
     } else {
-        $stmt = $pdo->query("SELECT `key`, value FROM settings");
+        $stmt = $pdo->query("SELECT `key`, value FROM settings WHERE `key` != 'admin_password'");
         $rows = $stmt->fetchAll();
         $result = [];
         foreach ($rows as $r) $result[$r['key']] = $r['value'];
@@ -23,6 +29,8 @@ if ($method === 'GET') {
 
 // ─── PUT : Met à jour un paramètre ────────────────────────────────────────────
 elseif ($method === 'PUT') {
+    checkAuth(); // Protection JWT
+
     $data = json_decode(file_get_contents('php://input'), true);
     $key   = $data['key']   ?? null;
     $value = $data['value'] ?? null;
@@ -31,6 +39,11 @@ elseif ($method === 'PUT') {
         http_response_code(400);
         echo json_encode(['error' => 'key ou value manquant']);
         exit;
+    }
+
+    // Si on change le mot de passe, on doit le hasher
+    if ($key === 'admin_password') {
+        $value = hashPassword($value);
     }
 
     $stmt = $pdo->prepare(

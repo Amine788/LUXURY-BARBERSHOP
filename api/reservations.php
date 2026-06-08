@@ -1,11 +1,12 @@
 <?php
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth_utils.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $pdo = getPDO();
 
 // ─── GET : Liste toutes les réservations ──────────────────────────────────────
 if ($method === 'GET') {
+    checkAuth(); // Protection JWT
     $stmt = $pdo->query(
         "SELECT id, submitted_at, name, phone, service, barber, date, time, status
          FROM reservations
@@ -31,6 +32,7 @@ if ($method === 'GET') {
 
 // ─── POST : Créer une nouvelle réservation ────────────────────────────────────
 elseif ($method === 'POST') {
+    // PUBLIC : Pas de checkAuth ici
     $data = json_decode(file_get_contents('php://input'), true);
     if (!$data) {
         http_response_code(400);
@@ -59,6 +61,7 @@ elseif ($method === 'POST') {
 
 // ─── PUT : Mettre à jour le statut d'une réservation ──────────────────────────
 elseif ($method === 'PUT') {
+    checkAuth(); // Protection JWT
     $data = json_decode(file_get_contents('php://input'), true);
     $id     = $data['id']     ?? null;
     $status = $data['status'] ?? null;
@@ -78,6 +81,7 @@ elseif ($method === 'PUT') {
 
 // ─── DELETE : Supprimer une réservation ───────────────────────────────────────
 elseif ($method === 'DELETE') {
+    checkAuth(); // Protection JWT
     $id = $_GET['id'] ?? null;
     if (!$id) {
         http_response_code(400);
