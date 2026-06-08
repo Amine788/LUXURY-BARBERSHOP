@@ -434,6 +434,7 @@ export async function login(password: string): Promise<boolean> {
     // Fallback local uniquement en développement si l'API est absente
     if (window.location.hostname === 'localhost' && password === "aviator2024") {
       localStorage.setItem(LS.auth, "true");
+      localStorage.setItem(LS.token, "local-dev-token");
       return true;
     }
     return false;
