@@ -45,9 +45,18 @@ function decodeJWT($jwt) {
  * Récupère le token depuis les headers
  */
 function getBearerToken() {
-    $headers = getallheaders();
-    if (isset($headers['Authorization'])) {
-        if (preg_match('/Bearer\s(\S+)/', $headers['Authorization'], $matches)) {
+    $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+    $authHeader = $headers['authorization'] ?? '';
+
+    // Alternative pour certains serveurs Apache
+    if (empty($authHeader) && isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+    } elseif (empty($authHeader) && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
+
+    if (!empty($authHeader)) {
+        if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
             return $matches[1];
         }
     }

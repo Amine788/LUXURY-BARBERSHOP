@@ -40,7 +40,7 @@ export interface Reservation {
 // En développement local (XAMPP), utilisez '/luxury-barbershop/api'
 // En production (Hostinger), utilisez '/api'
 const API_BASE = import.meta.env.VITE_API_BASE ?? 
-  (window.location.hostname === 'localhost' ? '/luxury-barbershop/api' : '/api');
+  (window.location.hostname === 'localhost' ? 'http://localhost/luxury-barbershop/api' : '/api');
 
 async function apiFetch(path: string, options?: RequestInit) {
   const token = localStorage.getItem(LS.token);
