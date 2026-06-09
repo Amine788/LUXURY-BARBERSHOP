@@ -19,9 +19,25 @@ const selectCls =
   "w-full bg-[#040809] border border-[#D4AF37]/14 pl-10 pr-9 py-4 text-[#f0ebe0]/80 focus:border-[#D4AF37]/45 outline-none transition-colors duration-300 appearance-none text-sm";
 
 export function Booking() {
-  const { data: barbers = [] } = useAsync(getBarbers);
+  const { data: barbers = [], refetch: refetchBarbers } = useAsync(getBarbers);
   const { data: categories = [] } = useAsync(getPricing);
   const { t, isRTL, language } = useI18n();
+
+  useEffect(() => {
+    const onUpdate = () => refetchBarbers();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'aviator_barbers') {
+        refetchBarbers();
+      }
+    };
+
+    window.addEventListener('aviator:barbers-updated', onUpdate);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('aviator:barbers-updated', onUpdate);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [refetchBarbers]);
 
   const staff = barbers.map((b) => ({ name: b.name, photo: b.photo }));
   const services = categories.flatMap((c) => c.items.map((i) => i.name));

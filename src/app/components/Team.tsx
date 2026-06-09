@@ -1,11 +1,39 @@
+import { useEffect } from "react";
 import { motion } from "motion/react";
 import { getBarbers, getImageUrl, type Barber } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
 import { useI18n } from "../../lib/i18n/context";
 
 export function Team() {
-  const { data: barbers = [] } = useAsync(getBarbers);
+  const { data: barbers = [], refetch } = useAsync(getBarbers);
   const { t, isRTL } = useI18n();
+
+  useEffect(() => {
+    const onUpdate = () => refetch();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'aviator_barbers') {
+        refetch();
+      }
+    };
+
+    window.addEventListener('aviator:barbers-updated', onUpdate);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('aviator:barbers-updated', onUpdate);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [refetch]);
+
+  const isDirector = (barber: Barber) =>
+    [barber.name, barber.title, barber.tag]
+      .some((value) => value?.toLowerCase().includes("directeur"));
+
+  const sortedBarbers = [...barbers].sort((a, b) => {
+    const aDirector = isDirector(a);
+    const bDirector = isDirector(b);
+    if (aDirector === bDirector) return 0;
+    return aDirector ? -1 : 1;
+  });
 
   return (
     <section id="team" className="py-36 bg-[#030706]">
@@ -44,7 +72,7 @@ export function Team() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-16">
-          {barbers.map((barber, i) => (
+          {sortedBarbers.map((barber, i) => (
             <BarberCard key={barber.name} barber={barber} index={i} />
           ))}
         </div>
@@ -62,9 +90,13 @@ function BarberCard({
 }) {
   const { isRTL, language } = useI18n();
 
-  // Simple mapping for titles/specialties if needed
   const displayTitle = language === 'fr' ? barber.title : 
     language === 'ar' ? "حلاق خبير" : "Expert Barber";
+
+  const isDirector = [barber.name, barber.title, barber.tag]
+    .some((value) => value?.toLowerCase().includes("directeur"));
+
+  const directorLabel = language === 'ar' ? 'المدير' : 'Directeur';
 
   return (
     <motion.div
@@ -78,8 +110,8 @@ function BarberCard({
         <img
           src={getImageUrl(barber.photo)}
           alt={barber.name}
-          className="w-full h-full object-cover object-top transition-transform duration-700"
-          style={{ transform: "scale(1)" }}
+          className="w-full h-full object-cover transition-transform duration-700"
+          style={{ transform: "scale(1)", objectPosition: barber.photoPosition ?? 'center' }}
           onMouseEnter={(e) =>
             ((e.currentTarget as HTMLImageElement).style.transform = "scale(1.07)")
           }
@@ -97,7 +129,16 @@ function BarberCard({
             {language === 'ar' ? 'خبير' : barber.tag}
           </span>
         </div>
-
+        {isDirector && (
+          <div className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'}`}>
+            <span
+              className="bg-white/10 border border-white/20 text-white px-2 py-1 text-[8px] tracking-[0.35em] uppercase"
+              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
+            >
+              {directorLabel}
+            </span>
+          </div>
+        )}
 
         <div className={`absolute bottom-0 left-0 right-0 p-6 ${isRTL ? 'text-right' : 'text-left'}`}>
           <h3

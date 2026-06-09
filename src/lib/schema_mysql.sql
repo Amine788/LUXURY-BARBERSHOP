@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS `barbers` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE `barbers`
+  ADD COLUMN IF NOT EXISTS `photo_position` VARCHAR(50) NOT NULL DEFAULT 'center';
+
 -- ── Catégories de tarifs ──────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `pricing_categories` (
   `id`         VARCHAR(50)  NOT NULL,

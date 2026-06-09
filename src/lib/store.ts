@@ -7,6 +7,7 @@ export interface Barber {
   experience: string;
   photo: string;
   tag: string;
+  photoPosition?: string;
 }
 
 export interface PriceItem {
@@ -293,6 +294,13 @@ export async function saveDisplayPhone(phone: string): Promise<void> {
   });
 }
 
+export async function saveAdminPassword(password: string): Promise<void> {
+  await apiFetch('/settings.php', {
+    method: 'PUT',
+    body: JSON.stringify({ key: 'admin_password', value: password }),
+  });
+}
+
 export function getWhatsAppUrl(message?: string): string {
   const phone = getContactPhoneSync();
   const defaultMsg = "Bonjour AVIATOR Barber Shop, je souhaite fixer un rendez-vous";
@@ -302,14 +310,27 @@ export function getWhatsAppUrl(message?: string): string {
 // ─── Barbers ──────────────────────────────────────────────────────────────────
 
 export async function getBarbers(): Promise<Barber[]> {
-  try {
-    const data = await apiFetch('/barbers.php');
-    if (Array.isArray(data) && data.length > 0) return data as Barber[];
-  } catch { /* fallback */ }
+  let localBarbers: Barber[] = [];
   try {
     const raw = localStorage.getItem(LS.barbers);
-    if (raw) return JSON.parse(raw) as Barber[];
+    if (raw) localBarbers = JSON.parse(raw) as Barber[];
   } catch { /* ignore */ }
+
+  try {
+    const data = await apiFetch('/barbers.php');
+    if (Array.isArray(data) && data.length > 0) {
+      return (data as Barber[]).map((barber) => {
+        if (barber.photoPosition) return barber;
+        const localMatch = localBarbers.find((local) => local.name === barber.name);
+        return {
+          ...barber,
+          photoPosition: localMatch?.photoPosition ?? 'center',
+        };
+      });
+    }
+  } catch { /* fallback */ }
+
+  if (localBarbers.length > 0) return localBarbers;
   return DEFAULT_BARBERS;
 }
 
@@ -323,6 +344,7 @@ export function getBarbersSync(): Barber[] {
 
 export async function saveBarbers(barbers: Barber[]): Promise<void> {
   localStorage.setItem(LS.barbers, JSON.stringify(barbers));
+  window.dispatchEvent(new CustomEvent('aviator:barbers-updated', { detail: { barbers } }));
   await apiFetch('/barbers.php', {
     method: 'POST',
     body: JSON.stringify(barbers),

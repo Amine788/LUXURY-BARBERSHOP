@@ -7,7 +7,7 @@ $pdo = getPDO();
 // ─── GET : Liste tous les barbiers ────────────────────────────────────────────
 if ($method === 'GET') {
     $stmt = $pdo->query(
-        "SELECT name, title, specialty, experience, photo, tag
+        "SELECT name, title, specialty, experience, photo, tag, photo_position AS photoPosition
          FROM barbers
          ORDER BY sort_order ASC"
     );
@@ -26,18 +26,19 @@ elseif ($method === 'POST') {
 
     $pdo->exec("DELETE FROM barbers");
     $stmt = $pdo->prepare(
-        "INSERT INTO barbers (sort_order, name, title, specialty, experience, photo, tag)
-         VALUES (:sort_order, :name, :title, :specialty, :experience, :photo, :tag)"
+        "INSERT INTO barbers (sort_order, name, title, specialty, experience, photo, tag, photo_position)
+         VALUES (:sort_order, :name, :title, :specialty, :experience, :photo, :tag, :photo_position)"
     );
     foreach ($barbers as $i => $b) {
         $stmt->execute([
-            ':sort_order' => $i,
-            ':name'       => $b['name']       ?? '',
-            ':title'      => $b['title']      ?? 'Expert Barber',
-            ':specialty'  => $b['specialty']  ?? '',
-            ':experience' => $b['experience'] ?? '5+ Ans',
-            ':photo'      => $b['photo']      ?? '',
-            ':tag'        => $b['tag']        ?? 'Expert Barber',
+            ':sort_order'     => $i,
+            ':name'           => $b['name']       ?? '',
+            ':title'          => $b['title']      ?? 'Expert Barber',
+            ':specialty'      => $b['specialty']  ?? '',
+            ':experience'     => $b['experience'] ?? '5+ Ans',
+            ':photo'          => $b['photo']      ?? '',
+            ':tag'            => $b['tag']        ?? 'Expert Barber',
+            ':photo_position' => $b['photoPosition'] ?? 'center',
         ]);
     }
 
