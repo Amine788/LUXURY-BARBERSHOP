@@ -217,7 +217,14 @@ function generateAndSendOTP(): bool {
     )->execute([$codeHash, $expiresAt]);
 
     // Envoyer par email
-    return sendOTPEmail($code);
+    $sent = sendOTPEmail($code);
+
+    // DEBUG LOCAL : Si on est en local, on écrit le code dans un fichier pour que le dev puisse le voir
+    if (in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'])) {
+        file_put_contents(__DIR__ . '/otp_debug.txt', "[" . date('Y-m-d H:i:s') . "] OTP Code: $code\n", FILE_APPEND);
+    }
+
+    return $sent;
 }
 
 /**
@@ -250,11 +257,12 @@ function sendEmailSMTP(string $to, string $subject, string $htmlMessage, string 
     }
 
     try {
-        $socket = fsockopen($host, $port, $errno, $errstr, 10);
+        $socket = fsockopen($host, $port, $errno, $errstr, 2);
         if (!$socket) {
             error_log("SMTP connection failed: $errstr ($errno)");
             return false;
         }
+        stream_set_timeout($socket, 3);
 
         $read = function($socket, $expected) {
             $response = '';

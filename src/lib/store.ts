@@ -431,7 +431,7 @@ export interface LoginResult {
 }
 
 const SS_LAST_ACTIVITY = "aviator_admin_last_activity";
-const INACTIVITY_TIMEOUT = 1800; // 30 minutes (en secondes)
+const INACTIVITY_TIMEOUT = 18000; // 5 heures (en secondes)
 
 function decodeJWTPayload(token: string): Record<string, unknown> | null {
   try {

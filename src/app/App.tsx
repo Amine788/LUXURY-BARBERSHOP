@@ -68,7 +68,7 @@ function AdminRoute() {
 
 // ── Root ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const basename = window.location.hostname === 'localhost' ? '/luxury-barbershop' : '';
+  const basename = "";
 
   return (
     <I18nProvider>

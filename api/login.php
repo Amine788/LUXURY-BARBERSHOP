@@ -72,7 +72,10 @@ if ($ok) {
     // Générer et envoyer l'OTP par email
     $sent = generateAndSendOTP();
 
-    if (!$sent) {
+    // En local, on continue même si l'email échoue car le code est loggé dans otp_debug.txt
+    $isLocal = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']);
+
+    if (!$sent && !$isLocal) {
         http_response_code(500);
         echo json_encode(['error' => 'Impossible d\'envoyer l\'email de vérification. Vérifiez ADMIN_EMAIL dans .env']);
         exit;
