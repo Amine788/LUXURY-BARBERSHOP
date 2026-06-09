@@ -63,8 +63,49 @@ CREATE TABLE IF NOT EXISTS `settings` (
   PRIMARY KEY (`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Valeurs par défaut
+-- ── Tentatives de connexion (Anti Brute Force) ────────────────
+CREATE TABLE IF NOT EXISTS `login_attempts` (
+  `ip`           VARCHAR(45)  NOT NULL,
+  `attempts`     INT          NOT NULL DEFAULT 0,
+  `last_attempt` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `locked_until` DATETIME     NULL DEFAULT NULL,
+  PRIMARY KEY (`ip`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Logs d'activité Admin ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `admin_logs` (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  `action`     VARCHAR(100) NOT NULL,
+  `details`    TEXT         NOT NULL DEFAULT '',
+  `ip`         VARCHAR(45)  NOT NULL,
+  `user_agent` VARCHAR(255) NOT NULL DEFAULT '',
+  `success`    TINYINT(1)   NOT NULL DEFAULT 1,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_action`     (`action`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── OTP 2FA par email ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `admin_otp` (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  `code_hash`  VARCHAR(255) NOT NULL,
+  `expires_at` DATETIME     NOT NULL,
+  `attempts`   INT          NOT NULL DEFAULT 0,
+  `used`       TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Valeurs par défaut ────────────────────────────────────────────────────────
 INSERT IGNORE INTO `settings` (`key`, `value`) VALUES
   ('whatsapp_phone', '212659659715'),
-  ('display_phone',  '05 28 32 63 64'),
-  ('admin_password', 'aviator2024');
+  ('display_phone',  '05 28 32 63 64');
+-- NOTE : Le mot de passe admin sera hashé automatiquement par login.php
+-- lors de la première connexion. Ne pas stocker de mot de passe en clair ici.
+
+-- ── Nettoyage automatique des anciennes tentatives (événement optionnel) ─────
+-- Décommentez si les événements MySQL sont activés sur votre serveur :
+-- CREATE EVENT IF NOT EXISTS `cleanup_login_attempts`
+--   ON SCHEDULE EVERY 1 DAY
+--   DO DELETE FROM `login_attempts` WHERE `last_attempt` < DATE_SUB(NOW(), INTERVAL 7 DAY);

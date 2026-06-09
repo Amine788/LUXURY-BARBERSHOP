@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Scissors, Calendar, Users, LogOut, Menu, X, BarChart3, Tag, Settings as SettingsIcon,
+  Scissors, Calendar, Users, LogOut, Menu, X, BarChart3, Tag,
+  Settings as SettingsIcon, Clock, ShieldCheck,
 } from "lucide-react";
-import { logout } from "../../lib/store";
+import { logout, getSessionInfo, refreshActivity, checkInactivityTimeout } from "../../lib/store";
 import { Reservations } from "./sections/Reservations";
 import { TeamManager } from "./sections/TeamManager";
 import { PricingManager } from "./sections/PricingManager";
@@ -17,22 +18,83 @@ interface Props {
 
 const logoImg = "https://res.cloudinary.com/dfltnm8qu/image/upload/v1780490163/IMG_7660.JPG__2_-removebg-preview_vyoxd3.png";
 
-export function AdminPage({ onLogout }: Props) {
-  const [tab, setTab] = useState<Tab>("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+function formatTime(seconds: number): string {
+  if (seconds <= 0) return "0s";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h${m.toString().padStart(2, "0")}`;
+  if (m > 0) return `${m}min`;
+  return `${s}s`;
+}
 
-  const handleLogout = () => {
+export function AdminPage({ onLogout }: Props) {
+  const [tab, setTab]               = useState<Tab>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState(getSessionInfo());
+
+  const handleLogout = useCallback(() => {
     logout();
     onLogout();
-  };
+  }, [onLogout]);
+
+  // ── Inactivité + expiration JWT ────────────────────────────────────────────
+  useEffect(() => {
+    // Refresh activity sur toute interaction utilisateur
+    const onActivity = () => refreshActivity();
+    window.addEventListener("mousemove", onActivity, { passive: true });
+    window.addEventListener("keydown",   onActivity, { passive: true });
+    window.addEventListener("click",     onActivity, { passive: true });
+    window.addEventListener("scroll",    onActivity, { passive: true });
+
+    // Vérification périodique toutes les 30 secondes
+    const interval = setInterval(() => {
+      // Auto-logout si inactif
+      if (checkInactivityTimeout()) {
+        onLogout();
+        return;
+      }
+      // Mettre à jour l'affichage du timer
+      setSessionInfo(getSessionInfo());
+
+      // Auto-logout si le token JWT a expiré
+      const info = getSessionInfo();
+      if (info.tokenSecondsLeft === 0) {
+        logout();
+        onLogout();
+      }
+    }, 30_000);
+
+    return () => {
+      window.removeEventListener("mousemove", onActivity);
+      window.removeEventListener("keydown",   onActivity);
+      window.removeEventListener("click",     onActivity);
+      window.removeEventListener("scroll",    onActivity);
+      clearInterval(interval);
+    };
+  }, [onLogout]);
+
+  // Mise à jour du timer toutes les minutes
+  useEffect(() => {
+    const minuteInterval = setInterval(() => setSessionInfo(getSessionInfo()), 60_000);
+    return () => clearInterval(minuteInterval);
+  }, []);
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "dashboard", label: "Vue d'ensemble", icon: <BarChart3 size={16} /> },
-    { id: "reservations", label: "Réservations", icon: <Calendar size={16} /> },
-    { id: "team", label: "Équipe", icon: <Users size={16} /> },
-    { id: "pricing", label: "Tarifs", icon: <Tag size={16} /> },
-    { id: "settings", label: "Paramètres", icon: <SettingsIcon size={16} /> },
+    { id: "dashboard",    label: "Vue d'ensemble", icon: <BarChart3 size={16} /> },
+    { id: "reservations", label: "Réservations",   icon: <Calendar size={16} /> },
+    { id: "team",         label: "Équipe",          icon: <Users size={16} /> },
+    { id: "pricing",      label: "Tarifs",          icon: <Tag size={16} /> },
+    { id: "settings",     label: "Paramètres",      icon: <SettingsIcon size={16} /> },
   ];
+
+  // Couleur du timer selon le temps restant
+  const sessionLeft = Math.min(sessionInfo.tokenSecondsLeft, sessionInfo.inactiveSecondsLeft);
+  const timerColor  = sessionLeft < 300
+    ? "text-red-400"
+    : sessionLeft < 900
+      ? "text-amber-400"
+      : "text-emerald-400/70";
 
   return (
     <div className="min-h-screen bg-[#060b07] flex" style={{ fontFamily: "Raleway, sans-serif" }}>
@@ -69,6 +131,19 @@ export function AdminPage({ onLogout }: Props) {
             </button>
           ))}
         </nav>
+
+        {/* Session info */}
+        <div className="px-4 pb-2">
+          <div className="flex items-center gap-2 px-3 py-2 bg-[#D4AF37]/5 border border-[#D4AF37]/10">
+            <ShieldCheck size={12} className="text-[#D4AF37]/40 shrink-0" />
+            <div>
+              <p className="text-[#f0ebe0]/30 text-[9px] tracking-wider uppercase">Session</p>
+              <p className={`text-[10px] font-mono font-semibold ${timerColor}`}>
+                {sessionLeft > 0 ? formatTime(sessionLeft) : "Expirée"}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Logout */}
         <div className="p-4 border-t border-[#D4AF37]/10">
@@ -109,19 +184,28 @@ export function AdminPage({ onLogout }: Props) {
               {navItems.find((n) => n.id === tab)?.label}
             </h1>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[#f0ebe0]/30 text-[10px] tracking-wider">En ligne</span>
+          <div className="ml-auto flex items-center gap-4">
+            {/* Timer session (header) */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              <Clock size={11} className={timerColor} />
+              <span className={`text-[10px] font-mono tracking-wider ${timerColor}`}>
+                {sessionLeft > 0 ? formatTime(sessionLeft) : "Expirée"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[#f0ebe0]/30 text-[10px] tracking-wider">En ligne</span>
+            </div>
           </div>
         </header>
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          {tab === "dashboard" && <Dashboard />}
+          {tab === "dashboard"    && <Dashboard />}
           {tab === "reservations" && <Reservations />}
-          {tab === "team" && <TeamManager />}
-          {tab === "pricing" && <PricingManager />}
-          {tab === "settings" && <Settings />}
+          {tab === "team"         && <TeamManager />}
+          {tab === "pricing"      && <PricingManager />}
+          {tab === "settings"     && <Settings />}
         </main>
       </div>
     </div>

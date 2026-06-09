@@ -242,6 +242,7 @@ const LS = {
   reservations: "aviator_reservations",
   auth:         "aviator_admin_auth",
   token:        "aviator_admin_token",
+  tokenExp:     "aviator_admin_token_exp",
   pricing:      "aviator_pricing",
   contact:      "aviator_contact",
   contactDisp:  "aviator_contact_display",
@@ -417,10 +418,47 @@ export async function savePricing(categories: PricingCategory[]): Promise<void> 
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-const FALLBACK_PASSWORD = "aviator2024";
+export interface LoginResult {
+  success: boolean;
+  error?: string;
+  attemptsLeft?: number;
+  locked?: boolean;
+  retryAfter?: number;  // secondes
+  requireOTP?: boolean; // vrai si le mdp est ok mais OTP requis
+  maskedEmail?: string; // ex: av***@gmail.com
+  expiresIn?: number;   // secondes avant expiration OTP
+  expired?: boolean;    // vrai si le code OTP a expiré
+}
 
-export async function login(password: string): Promise<boolean> {
-  // Essayer d'abord via l'API PHP
+const SS_LAST_ACTIVITY = "aviator_admin_last_activity";
+const INACTIVITY_TIMEOUT = 1800; // 30 minutes (en secondes)
+
+function decodeJWTPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
+
+function saveToken(token: string): void {
+  const payload = decodeJWTPayload(token);
+  const exp = typeof payload?.exp === 'number' ? payload.exp : null;
+  localStorage.setItem(LS.auth,  'true');
+  localStorage.setItem(LS.token, token);
+  if (exp) {
+    localStorage.setItem(LS.tokenExp, String(exp));
+  } else {
+    // Si pas d'exp dans le token, on met un défaut (2h)
+    localStorage.setItem(LS.tokenExp, String(Math.floor(Date.now() / 1000) + 7200));
+  }
+  sessionStorage.setItem(SS_LAST_ACTIVITY, String(Date.now()));
+}
+
+export async function login(password: string): Promise<LoginResult> {
   try {
     const res = await fetch(`${API_BASE}/login.php`, {
       method: 'POST',
@@ -428,41 +466,124 @@ export async function login(password: string): Promise<boolean> {
       body: JSON.stringify({ password }),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.token) {
-        localStorage.setItem(LS.auth, "true");
-        localStorage.setItem(LS.token, data.token);
-        return true;
-      }
+    const data = await res.json().catch(() => ({}));
+
+    // Étape 1 : mot de passe ok → OTP envoyé par email
+    if (res.ok && data?.requireOTP) {
+      return {
+        success:     true,
+        requireOTP:  true,
+        maskedEmail: data.maskedEmail,
+        expiresIn:   data.expiresIn,
+      };
     }
 
-    // L'API a répondu (ex: 401 mot de passe incorrect) — pas de fallback
-    if (res.status === 401) {
-      return false;
+    // Cas ancien ou direct (sans OTP, ne devrait plus arriver sauf config locale spécifique)
+    if (res.ok && data?.token) {
+      saveToken(data.token);
+      return { success: true };
     }
 
-    // L'API a répondu avec une autre erreur (500, etc.)
-    // → on tente le fallback avec le mot de passe codé en dur
-    throw new Error(`API error: ${res.status}`);
+    return {
+      success:      false,
+      error:        data?.error ?? 'Erreur de connexion',
+      attemptsLeft: data?.attemptsLeft,
+      locked:       data?.locked ?? false,
+      retryAfter:   data?.retryAfter,
+    };
 
   } catch (err) {
-    console.warn("API login inaccessible, tentative de fallback:", err);
-    // Fallback : mot de passe codé en dur si l'API est inaccessible
-    if (password === FALLBACK_PASSWORD) {
-      localStorage.setItem(LS.auth, "true");
-      localStorage.setItem(LS.token, "local-dev-token");
-      return true;
+    console.error('API login inaccessible:', err);
+    return { success: false, error: 'Serveur inaccessible. Vérifiez votre connexion.' };
+  }
+}
+
+export async function verifyOTP(otp: string): Promise<LoginResult> {
+  try {
+    const res = await fetch(`${API_BASE}/verify_otp.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data?.token) {
+      saveToken(data.token);
+      return { success: true };
     }
-    return false;
+
+    return {
+      success: false,
+      error:   data?.error ?? 'Code incorrect',
+      locked:  data?.locked ?? false,
+      expired: data?.expired ?? false,
+    };
+
+  } catch (err) {
+    console.error('API verify_otp inaccessible:', err);
+    return { success: false, error: 'Serveur inaccessible. Vérifiez votre connexion.' };
   }
 }
 
 export function logout(): void {
   localStorage.removeItem(LS.auth);
   localStorage.removeItem(LS.token);
+  localStorage.removeItem(LS.tokenExp);
+  sessionStorage.removeItem(SS_LAST_ACTIVITY);
 }
 
 export function isAuthenticated(): boolean {
   return localStorage.getItem(LS.auth) === "true" && !!localStorage.getItem(LS.token);
+}
+
+export interface SessionInfo {
+  tokenSecondsLeft: number;
+  inactiveSecondsLeft: number;
+}
+
+export function getSessionInfo(): SessionInfo {
+  const tokenExp = localStorage.getItem(LS.tokenExp);
+  const lastAct = sessionStorage.getItem(SS_LAST_ACTIVITY);
+
+  let tokenSecondsLeft = 0;
+  if (tokenExp) {
+    const expTime = parseInt(tokenExp, 10);
+    if (!isNaN(expTime)) {
+      tokenSecondsLeft = Math.max(0, expTime - Math.floor(Date.now() / 1000));
+    }
+  }
+
+  let inactiveSecondsLeft = 0;
+  if (lastAct) {
+    const lastTime = parseInt(lastAct, 10);
+    if (!isNaN(lastTime)) {
+      const elapsed = Math.floor((Date.now() - lastTime) / 1000);
+      inactiveSecondsLeft = Math.max(0, INACTIVITY_TIMEOUT - elapsed);
+    }
+  }
+
+  return { tokenSecondsLeft, inactiveSecondsLeft };
+}
+
+export function refreshActivity(): void {
+  if (localStorage.getItem(LS.auth) === "true") {
+    sessionStorage.setItem(SS_LAST_ACTIVITY, String(Date.now()));
+  }
+}
+
+export function checkInactivityTimeout(): boolean {
+  if (localStorage.getItem(LS.auth) !== "true") return false;
+  const lastAct = sessionStorage.getItem(SS_LAST_ACTIVITY);
+  if (!lastAct) return false;
+  
+  const lastTime = parseInt(lastAct, 10);
+  if (isNaN(lastTime)) return false;
+
+  const elapsed = Math.floor((Date.now() - lastTime) / 1000);
+  if (elapsed >= INACTIVITY_TIMEOUT) {
+    logout();
+    return true;
+  }
+  return false;
 }

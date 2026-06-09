@@ -3,6 +3,7 @@ import {
   getBarbersSync,
   getContactPhoneSync,
   login,
+  verifyOTP,
   logout,
   isAuthenticated,
   DEFAULT_BARBERS
@@ -15,8 +16,9 @@ global.fetch = mockFetch;
 describe('Store', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.clearAllMocks();
-    // Par défaut, fetch échoue pour forcer le fallback localStorage
+    // Par défaut, fetch échoue pour simuler une indisponibilité API
     mockFetch.mockRejectedValue(new Error('API not available'));
   });
 
@@ -31,40 +33,68 @@ describe('Store', () => {
   });
 
   describe('Auth', () => {
-    it('should login with correct password via API', async () => {
+    it('should trigger OTP request on correct password via API', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ value: 'aviator2024' }),
+        json: async () => ({ requireOTP: true, maskedEmail: 'am***@gmail.com', expiresIn: 300 }),
       });
       const result = await login('aviator2024');
-      expect(result).toBe(true);
-      expect(isAuthenticated()).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.requireOTP).toBe(true);
+      expect(result.maskedEmail).toBe('am***@gmail.com');
+      expect(result.expiresIn).toBe(300);
+      expect(isAuthenticated()).toBe(false); // Pas connecté tant que l'OTP n'est pas validé
     });
 
-    it('should fallback to hardcoded password when API fails', async () => {
+    it('should handle API failures and return error object', async () => {
       mockFetch.mockRejectedValue(new Error('API not available'));
       const result = await login('aviator2024');
-      expect(result).toBe(true);
-      expect(isAuthenticated()).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('inaccessible');
+      expect(isAuthenticated()).toBe(false);
     });
 
     it('should fail login with incorrect password', async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ value: 'aviator2024' }),
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Mot de passe incorrect', attemptsLeft: 3 }),
       });
       const result = await login('wrongpassword');
-      expect(result).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Mot de passe incorrect');
+      expect(result.attemptsLeft).toBe(3);
+      expect(isAuthenticated()).toBe(false);
+    });
+
+    it('should authenticate successfully when OTP is verified', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ token: 'mock.jwt.token' }),
+      });
+      const result = await verifyOTP('123456');
+      expect(result.success).toBe(true);
+      expect(isAuthenticated()).toBe(true);
+    });
+
+    it('should fail OTP verification with incorrect code', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: 'Code incorrect', locked: false }),
+      });
+      const result = await verifyOTP('000000');
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Code incorrect');
       expect(isAuthenticated()).toBe(false);
     });
 
     it('should logout correctly', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ value: 'aviator2024' }),
-      });
-      await login('aviator2024');
+      // Pré-remplir le localStorage pour simuler un état connecté
+      localStorage.setItem('aviator_admin_auth', 'true');
+      localStorage.setItem('aviator_admin_token', 'mock.jwt.token');
       expect(isAuthenticated()).toBe(true);
+
       logout();
       expect(isAuthenticated()).toBe(false);
     });

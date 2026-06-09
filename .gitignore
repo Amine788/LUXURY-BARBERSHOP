@@ -29,3 +29,9 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# PHP API secrets (ne jamais commiter)
+api/.env
+
+# Fichiers uploadés par les utilisateurs
+api/uploads/
