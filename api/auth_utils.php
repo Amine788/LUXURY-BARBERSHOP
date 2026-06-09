@@ -221,6 +221,129 @@ function generateAndSendOTP(): bool {
 }
 
 /**
+ * Envoie un email via un socket SMTP (STARTTLS 587) avec authentification.
+ * Si les informations SMTP ne sont pas renseignées dans le .env, fait un fallback sur mail().
+ */
+function sendEmailSMTP(string $to, string $subject, string $htmlMessage, string $textMessage): bool {
+    $host = $_ENV['SMTP_HOST'] ?? '';
+    $port = (int)($_ENV['SMTP_PORT'] ?? 587);
+    $user = $_ENV['SMTP_USER'] ?? '';
+    $pass = $_ENV['SMTP_PASS'] ?? '';
+    $fromName = $_ENV['ADMIN_EMAIL_NAME'] ?? 'AVIATOR Admin';
+
+    if (empty($host) || empty($user)) {
+        // Fallback sur la fonction mail() standard de PHP si non configuré
+        $boundary = md5(uniqid());
+        $headers  = "From: \"$fromName\" <$to>\r\n";
+        $headers .= "Reply-To: $to\r\n";
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n";
+        $headers .= "X-Mailer: AVIATOR-Security/1.0\r\n";
+
+        $message  = "--$boundary\r\n";
+        $message .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n$textMessage\r\n";
+        $message .= "--$boundary\r\n";
+        $message .= "Content-Type: text/html; charset=UTF-8\r\n\r\n$htmlMessage\r\n";
+        $message .= "--$boundary--";
+
+        return mail($to, $subject, $message, $headers);
+    }
+
+    try {
+        $socket = fsockopen($host, $port, $errno, $errstr, 10);
+        if (!$socket) {
+            error_log("SMTP connection failed: $errstr ($errno)");
+            return false;
+        }
+
+        $read = function($socket, $expected) {
+            $response = '';
+            while (strpos($response, "\r\n") === false || (isset($response[3]) && $response[3] === '-')) {
+                $line = fgets($socket, 515);
+                if ($line === false) break;
+                $response .= $line;
+            }
+            $code = (int)substr($response, 0, 3);
+            if ($code !== $expected) {
+                error_log("SMTP error: Expected $expected, got: $response");
+                return false;
+            }
+            return true;
+        };
+
+        if (!$read($socket, 220)) { fclose($socket); return false; }
+
+        fwrite($socket, "EHLO localhost\r\n");
+        if (!$read($socket, 250)) { fclose($socket); return false; }
+
+        // STARTTLS
+        if ($port === 587) {
+            fwrite($socket, "STARTTLS\r\n");
+            if (!$read($socket, 220)) { fclose($socket); return false; }
+            if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                error_log("SMTP crypto negotiation failed");
+                fclose($socket);
+                return false;
+            }
+            fwrite($socket, "EHLO localhost\r\n");
+            if (!$read($socket, 250)) { fclose($socket); return false; }
+        }
+
+        // AUTH LOGIN
+        fwrite($socket, "AUTH LOGIN\r\n");
+        if (!$read($socket, 334)) { fclose($socket); return false; }
+
+        fwrite($socket, base64_encode($user) . "\r\n");
+        if (!$read($socket, 334)) { fclose($socket); return false; }
+
+        fwrite($socket, base64_encode($pass) . "\r\n");
+        if (!$read($socket, 235)) { fclose($socket); return false; }
+
+        // MAIL FROM
+        fwrite($socket, "MAIL FROM: <$user>\r\n");
+        if (!$read($socket, 250)) { fclose($socket); return false; }
+
+        // RCPT TO
+        fwrite($socket, "RCPT TO: <$to>\r\n");
+        if (!$read($socket, 250)) { fclose($socket); return false; }
+
+        // DATA
+        fwrite($socket, "DATA\r\n");
+        if (!$read($socket, 354)) { fclose($socket); return false; }
+
+        // En-têtes du message
+        $boundary = md5(uniqid());
+        $headers = [
+            "MIME-Version: 1.0",
+            "Content-Type: multipart/alternative; boundary=\"$boundary\"",
+            "To: <$to>",
+            "From: \"$fromName\" <$user>",
+            "Subject: $subject",
+            "Date: " . date('r'),
+            "X-Mailer: AVIATOR-Security/1.0"
+        ];
+
+        $content  = implode("\r\n", $headers) . "\r\n\r\n";
+        $content .= "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n$textMessage\r\n\r\n";
+        $content .= "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n$htmlMessage\r\n\r\n";
+        $content .= "--$boundary--\r\n";
+
+        // Protection point double
+        $content = str_replace("\n.", "\n..", $content);
+
+        fwrite($socket, $content . ".\r\n");
+        if (!$read($socket, 250)) { fclose($socket); return false; }
+
+        fwrite($socket, "QUIT\r\n");
+        fclose($socket);
+        return true;
+    } catch (Exception $e) {
+        error_log("SMTP exception: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * Envoie le code OTP par email à l'adresse admin.
  */
 function sendOTPEmail(string $code): bool {
@@ -231,7 +354,6 @@ function sendOTPEmail(string $code): bool {
     if (empty($to)) return false;
 
     $subject  = "[AVIATOR] Code de vérification : $code";
-    $boundary = md5(uniqid());
 
     $htmlBody = "
 <!DOCTYPE html>
@@ -267,19 +389,7 @@ function sendOTPEmail(string $code): bool {
 
     $textBody = "[AVIATOR] Code de vérification admin : $code\nValide $expMin minutes.\nNe partagez pas ce code.";
 
-    $headers  = "From: \"$name\" <$to>\r\n";
-    $headers .= "Reply-To: $to\r\n";
-    $headers .= "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n";
-    $headers .= "X-Mailer: AVIATOR-Security/1.0\r\n";
-
-    $message  = "--$boundary\r\n";
-    $message .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n$textBody\r\n";
-    $message .= "--$boundary\r\n";
-    $message .= "Content-Type: text/html; charset=UTF-8\r\n\r\n$htmlBody\r\n";
-    $message .= "--$boundary--";
-
-    return mail($to, $subject, $message, $headers);
+    return sendEmailSMTP($to, $subject, $htmlBody, $textBody);
 }
 
 /**
