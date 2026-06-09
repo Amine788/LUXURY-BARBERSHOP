@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { User, Phone, ChevronDown, Calendar, Clock, Check, Loader2 } from "lucide-react";
-import { addReservation, getBarbers, getPricing, getWhatsAppUrl } from "../../lib/store";
+import { addReservation, getBarbers, getImageUrl, getPricing, getWhatsAppUrl } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
 import { useI18n } from "../../lib/i18n/context";
 
@@ -352,9 +352,10 @@ export function Booking() {
                     >
                       <div className="relative">
                         <img
-                          src={member.photo}
+                          src={getImageUrl(member.photo)}
                           alt={member.name}
-                          className="w-12 h-12 rounded-full object-cover object-top"
+                          className="w-12 h-12 rounded-full object-cover"
+                          style={{ objectPosition: member.photoPosition ?? 'center' }}
                         />
                         {isSelected && (
                           <div className="absolute inset-0 rounded-full border-2 border-[#D4AF37] flex items-end justify-end">
