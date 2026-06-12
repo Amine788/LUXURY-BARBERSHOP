@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `reservations` (
   `submitted_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `name`         VARCHAR(255) NOT NULL,
   `phone`        VARCHAR(50)  NOT NULL,
-  `service`      VARCHAR(255) NOT NULL,
+  `services`     JSON         NOT NULL,
   `barber`       VARCHAR(255) NOT NULL DEFAULT '',
   `date`         VARCHAR(20)  NOT NULL,
   `time`         VARCHAR(10)  NOT NULL,
@@ -112,3 +112,23 @@ INSERT IGNORE INTO `settings` (`key`, `value`) VALUES
 -- CREATE EVENT IF NOT EXISTS `cleanup_login_attempts`
 --   ON SCHEDULE EVERY 1 DAY
 --   DO DELETE FROM `login_attempts` WHERE `last_attempt` < DATE_SUB(NOW(), INTERVAL 7 DAY);
+
+-- ── Migration : colonne 'service' → 'services' JSON (bases existantes) ────────
+-- À exécuter UNE SEULE FOIS si votre table 'reservations' possède déjà
+-- l'ancienne colonne 'service' (VARCHAR) au lieu de 'services' (JSON).
+--
+-- Étape 1 : Ajouter la nouvelle colonne (ne fait rien si elle existe déjà)
+ALTER TABLE `reservations`
+  ADD COLUMN IF NOT EXISTS `services` JSON NULL AFTER `phone`;
+
+-- Étape 2 : Migrer les données existantes (wrapping de l'ancien champ)
+UPDATE `reservations`
+SET `services` = JSON_ARRAY(
+  JSON_OBJECT('id', '0', 'name', `service`, 'price', 0)
+)
+WHERE `services` IS NULL
+  AND `service` IS NOT NULL
+  AND `service` != '';
+
+-- Étape 3 : Supprimer l'ancienne colonne (optionnel, après validation)
+-- ALTER TABLE `reservations` DROP COLUMN `service`;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { User, Phone, ChevronDown, Calendar, Clock, Check, Loader2 } from "lucide-react";
-import { addReservation, getBarbers, getImageUrl, getPricing, getWhatsAppUrl } from "../../lib/store";
+import { motion, AnimatePresence } from "motion/react";
+import { User, Phone, Calendar, Clock, Check, Loader2, X, ChevronDown } from "lucide-react";
+import { addReservation, getBarbers, getImageUrl, getPricing, getWhatsAppUrl, type ServiceItem } from "../../lib/store";
 import { useAsync } from "../../lib/hooks/useAsync";
 import { useI18n } from "../../lib/i18n/context";
 
@@ -26,44 +26,70 @@ export function Booking() {
   useEffect(() => {
     const onUpdate = () => refetchBarbers();
     const onStorage = (event: StorageEvent) => {
-      if (event.key === 'aviator_barbers') {
-        refetchBarbers();
-      }
+      if (event.key === "aviator_barbers") refetchBarbers();
     };
-
-    window.addEventListener('aviator:barbers-updated', onUpdate);
-    window.addEventListener('storage', onStorage);
+    window.addEventListener("aviator:barbers-updated", onUpdate);
+    window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener('aviator:barbers-updated', onUpdate);
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener("aviator:barbers-updated", onUpdate);
+      window.removeEventListener("storage", onStorage);
     };
   }, [refetchBarbers]);
 
-  const staff = barbers.map((b) => ({ name: b.name, photo: b.photo }));
-  const services = categories.flatMap((c) => c.items.map((i) => i.name));
+  const staff = barbers.map((b) => ({
+    name: b.name,
+    photo: b.photo,
+    photoPosition: b.photoPosition,
+  }));
 
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    service: "",
     barber: "",
     date: "",
     time: "",
   });
+  const [cart, setCart] = useState<ServiceItem[]>([]);
+  const [cartError, setCartError] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Preselected service from localStorage (e.g. from Pricing section)
   useEffect(() => {
+    if (categories.length === 0) return;
     const preselected = localStorage.getItem("aviator_selected_service");
-    if (preselected && services.length > 0) {
-      const match = services.find((s) =>
-        s.toLowerCase().includes(preselected.toLowerCase()) ||
-        preselected.toLowerCase().includes(s.toLowerCase().split(" ")[0])
-      );
-      setForm((prev) => ({ ...prev, service: match || preselected }));
-      localStorage.removeItem("aviator_selected_service");
+    if (!preselected) return;
+
+    for (const cat of categories) {
+      for (let idx = 0; idx < cat.items.length; idx++) {
+        const item = cat.items[idx];
+        if (
+          item.name.toLowerCase().includes(preselected.toLowerCase()) ||
+          preselected.toLowerCase().includes(item.name.toLowerCase().split(" ")[0])
+        ) {
+          const price = parseInt(item.price.replace(/[^0-9]/g, "")) || 0;
+          setCart([{ id: `${cat.id}_${idx}`, name: item.name, price }]);
+          break;
+        }
+      }
     }
-  }, [services]);
+    localStorage.removeItem("aviator_selected_service");
+  }, [categories]);
+
+  const toggleService = (item: ServiceItem) => {
+    setCartError(false);
+    setCart((prev) =>
+      prev.some((s) => s.id === item.id)
+        ? prev.filter((s) => s.id !== item.id)
+        : [...prev, item]
+    );
+  };
+
+  const removeFromCart = (id: string) => {
+    setCart((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const totalPrice = cart.reduce((sum, s) => sum + s.price, 0);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -71,15 +97,20 @@ export function Booking() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cart.length === 0) {
+      setCartError(true);
+      setTimeout(() => setCartError(false), 3000);
+      return;
+    }
     setLoading(true);
     try {
       await addReservation({
-        name:    form.name,
-        phone:   form.phone,
-        service: form.service,
-        barber:  form.barber,
-        date:    form.date,
-        time:    form.time,
+        name: form.name,
+        phone: form.phone,
+        services: cart,
+        barber: form.barber,
+        date: form.date,
+        time: form.time,
       });
       setSubmitted(true);
     } finally {
@@ -90,13 +121,15 @@ export function Booking() {
   const today = new Date().toISOString().split("T")[0];
 
   const buildWhatsAppUrl = () => {
+    const servicesList = cart.map((s) => s.name).join(", ") || "À discuter";
+    const total = totalPrice;
     let msg = "";
-    if (language === 'ar') {
-      msg = `مرحباً أفياتور باربر شوب، أود حجز موعد :\n• الخدمة : ${form.service || "للنقاش"}\n• الحلاق : ${form.barber || "بدون تفضيل"}\n• التاريخ : ${form.date || "للنقاش"}\n• الوقت : ${form.time || "للنقاش"}\nاسمي هو ${form.name} ورقمي هو ${form.phone}.`;
-    } else if (language === 'en') {
-      msg = `Hello AVIATOR Barbershop, I would like to book:\n• Service: ${form.service || "To discuss"}\n• Barber: ${form.barber || "No preference"}\n• Date: ${form.date || "To discuss"}\n• Time: ${form.time || "To discuss"}\nMy name is ${form.name} and my number is ${form.phone}.`;
+    if (language === "ar") {
+      msg = `مرحباً أفياتور باربر شوب، أود حجز موعد :\n• الخدمات : ${servicesList}\n• الإجمالي : ${total} درهم\n• الحلاق : ${form.barber || "بدون تفضيل"}\n• التاريخ : ${form.date || "للنقاش"}\n• الوقت : ${form.time || "للنقاش"}\nاسمي هو ${form.name} ورقمي هو ${form.phone}.`;
+    } else if (language === "en") {
+      msg = `Hello AVIATOR Barbershop, I would like to book :\n• Services: ${servicesList}\n• Total: ${total} DH\n• Barber: ${form.barber || "No preference"}\n• Date: ${form.date || "To discuss"}\n• Time: ${form.time || "To discuss"}\nMy name is ${form.name} and my number is ${form.phone}.`;
     } else {
-      msg = `Bonjour AVIATOR Barbershop, je souhaite réserver :\n• Service : ${form.service || "À discuter"}\n• Barbier : ${form.barber || "Pas de préférence"}\n• Date : ${form.date || "À discuter"}\n• Heure : ${form.time || "À discuter"}\nMon nom est ${form.name} et mon numéro est ${form.phone}.`;
+      msg = `Bonjour AVIATOR Barbershop, je souhaite réserver :\n• Services : ${servicesList}\n• Total : ${total} DH\n• Barbier : ${form.barber || "Pas de préférence"}\n• Date : ${form.date || "À discuter"}\n• Heure : ${form.time || "À discuter"}\nMon nom est ${form.name} et mon numéro est ${form.phone}.`;
     }
     return getWhatsAppUrl(msg);
   };
@@ -113,6 +146,7 @@ export function Booking() {
       />
 
       <div className="max-w-3xl mx-auto px-6 relative z-10">
+        {/* Section Header */}
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-5 mb-6">
             <div className="h-px w-16 bg-[#D4AF37]/35" />
@@ -120,7 +154,7 @@ export function Booking() {
               className="text-[#D4AF37]/70 tracking-[0.45em] text-[10px] uppercase"
               style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
             >
-              {language === 'ar' ? 'حجز' : 'Réservation'}
+              {language === "ar" ? "حجز" : "Réservation"}
             </span>
             <div className="h-px w-16 bg-[#D4AF37]/35" />
           </div>
@@ -135,7 +169,12 @@ export function Booking() {
             {isRTL ? (
               <>احجز <em style={{ color: "#D4AF37", fontStyle: "italic" }}>موعدك</em></>
             ) : (
-              <>{language === 'en' ? 'Book Your ' : 'Prenez '} <em style={{ color: "#D4AF37", fontStyle: "italic" }}>{language === 'en' ? 'Appointment' : 'Rendez-vous'}</em></>
+              <>
+                {language === "en" ? "Book Your " : "Prenez "}
+                <em style={{ color: "#D4AF37", fontStyle: "italic" }}>
+                  {language === "en" ? "Appointment" : "Rendez-vous"}
+                </em>
+              </>
             )}
           </h2>
           <p
@@ -146,6 +185,7 @@ export function Booking() {
           </p>
         </div>
 
+        {/* Success screen */}
         {submitted ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
@@ -159,7 +199,7 @@ export function Booking() {
               className="text-[#f0ebe0] mb-4"
               style={{ fontFamily: "Playfair Display, serif", fontSize: "1.7rem", fontWeight: 700 }}
             >
-              {language === 'ar' ? 'تم إرسال الطلب' : language === 'en' ? 'Request Sent' : 'Demande Envoyée'}
+              {language === "ar" ? "تم إرسال الطلب" : language === "en" ? "Request Sent" : "Demande Envoyée"}
             </h3>
             <p
               className="text-[#f0ebe0]/50 mb-8 text-sm leading-relaxed max-w-sm mx-auto"
@@ -176,14 +216,14 @@ export function Booking() {
                 style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif", fontWeight: 700 }}
               >
                 <WhatsAppIcon />
-                {language === 'ar' ? 'التأكيد عبر واتساب' : language === 'en' ? 'Confirm via WhatsApp' : 'Confirmer via WhatsApp'}
+                {language === "ar" ? "التأكيد عبر واتساب" : language === "en" ? "Confirm via WhatsApp" : "Confirmer via WhatsApp"}
               </a>
               <button
-                onClick={() => setSubmitted(false)}
+                onClick={() => { setSubmitted(false); setCart([]); }}
                 className="border border-[#D4AF37]/35 text-[#D4AF37] px-8 py-3.5 text-xs tracking-[0.25em] uppercase hover:bg-[#D4AF37]/8 transition-colors"
                 style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
-                {language === 'ar' ? 'حجز جديد' : language === 'en' ? 'New Booking' : 'Nouvelle Réservation'}
+                {language === "ar" ? "حجز جديد" : language === "en" ? "New Booking" : "Nouvelle Réservation"}
               </button>
             </div>
           </motion.div>
@@ -201,7 +241,7 @@ export function Booking() {
                 {t("booking.form.name")}
               </label>
               <div className="relative">
-                <User size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
+                <User size={14} className={`absolute ${isRTL ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <input
                   type="text"
                   name="name"
@@ -209,7 +249,7 @@ export function Booking() {
                   onChange={handleChange}
                   required
                   placeholder={t("booking.form.name")}
-                  className={`${inputCls} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+                  className={`${inputCls} ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"}`}
                   style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 />
               </div>
@@ -221,7 +261,7 @@ export function Booking() {
                 {t("booking.form.phone")}
               </label>
               <div className="relative">
-                <Phone size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
+                <Phone size={14} className={`absolute ${isRTL ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <input
                   type="tel"
                   name="phone"
@@ -229,34 +269,113 @@ export function Booking() {
                   onChange={handleChange}
                   required
                   placeholder="06 XX XX XX XX"
-                  className={`${inputCls} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+                  className={`${inputCls} ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"}`}
                   style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 />
               </div>
             </div>
 
-            {/* Service */}
-            <div>
-              <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
-                {t("booking.form.service")}
+            {/* ── Services Multi-Selection ─────────────────────────────────── */}
+            <div className="md:col-span-2">
+              <label
+                className={`${fieldLabel} flex items-center gap-2`}
+                style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
+              >
+                {language === "ar" ? "الخدمات" : language === "en" ? "Services" : "Services"}
+                {cart.length > 0 && (
+                  <span className="bg-[#D4AF37] text-[#040809] text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    {cart.length}
+                  </span>
+                )}
               </label>
-              <div className="relative">
-                <ChevronDown size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
-                <select
-                  name="service"
-                  value={form.service}
-                  onChange={handleChange}
-                  required
-                  className={`${selectCls} ${isRTL ? 'pr-10 pl-9' : 'pl-10 pr-9'}`}
-                  style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
-                >
-                  <option value="" disabled className="bg-[#040809]">{t("booking.form.service")}</option>
-                  {services.map((s) => (
-                    <option key={s} value={s} className="bg-[#040809]">{s}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
+
+              <div
+                className={`border p-4 transition-colors duration-300 space-y-5 ${
+                  cartError
+                    ? "border-red-500/40 bg-red-500/5"
+                    : "border-[#D4AF37]/10 bg-[#040809]"
+                }`}
+              >
+                {categories.map((cat) => (
+                  <div key={cat.id}>
+                    {/* Category header */}
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-[#D4AF37]/50 text-sm">{cat.icon}</span>
+                      <span className="text-[#D4AF37]/40 text-[9px] tracking-[0.3em] uppercase">
+                        {cat.label}
+                      </span>
+                      <div className="flex-1 h-px bg-[#D4AF37]/8" />
+                    </div>
+
+                    {/* Service cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {cat.items.map((item, idx) => {
+                        const svcId = `${cat.id}_${idx}`;
+                        const price = parseInt(item.price.replace(/[^0-9]/g, "")) || 0;
+                        const isSelected = cart.some((s) => s.id === svcId);
+                        return (
+                          <button
+                            key={svcId}
+                            type="button"
+                            onClick={() => toggleService({ id: svcId, name: item.name, price })}
+                            className={`flex flex-col items-start gap-1 p-3 border text-left transition-all duration-200 relative group ${
+                              isSelected
+                                ? "border-[#D4AF37] bg-[#D4AF37]/8"
+                                : "border-[#D4AF37]/12 bg-[#090f0a] hover:border-[#D4AF37]/35"
+                            }`}
+                          >
+                            <span
+                              className={`text-[11px] font-medium leading-tight ${
+                                isSelected ? "text-[#D4AF37]" : "text-[#f0ebe0]/80"
+                              }`}
+                              style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
+                            >
+                              {item.name}
+                            </span>
+                            <div className="flex items-center justify-between w-full mt-0.5">
+                              <span
+                                className={`text-[10px] ${
+                                  isSelected ? "text-[#D4AF37]/60" : "text-[#f0ebe0]/30"
+                                }`}
+                              >
+                                {item.price}
+                              </span>
+                              {isSelected ? (
+                                <div className="w-4 h-4 bg-[#D4AF37] flex items-center justify-center shrink-0">
+                                  <Check size={9} className="text-[#040809]" />
+                                </div>
+                              ) : (
+                                <div className="w-4 h-4 border border-[#D4AF37]/20 flex items-center justify-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <span className="text-[#D4AF37]/40 text-[10px] leading-none">+</span>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
+
+              {/* Cart error message */}
+              <AnimatePresence>
+                {cartError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-red-400 text-[10px] tracking-wider mt-2"
+                    style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
+                  >
+                    {language === "ar"
+                      ? "⚠ الرجاء اختيار خدمة واحدة على الأقل"
+                      : language === "en"
+                      ? "⚠ Please select at least one service"
+                      : "⚠ Veuillez sélectionner au moins un service"}
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Date */}
@@ -265,7 +384,7 @@ export function Booking() {
                 {t("booking.form.date")}
               </label>
               <div className="relative">
-                <Calendar size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
+                <Calendar size={14} className={`absolute ${isRTL ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <input
                   type="date"
                   name="date"
@@ -273,33 +392,33 @@ export function Booking() {
                   onChange={handleChange}
                   required
                   min={today}
-                  className={`${inputCls} ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} [color-scheme:dark]`}
+                  className={`${inputCls} ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} [color-scheme:dark]`}
                   style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 />
               </div>
             </div>
 
             {/* Time */}
-            <div className="md:col-span-2">
+            <div>
               <label className={fieldLabel} style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}>
                 {t("booking.form.time")}
               </label>
               <div className="relative">
-                <Clock size={14} className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
+                <Clock size={14} className={`absolute ${isRTL ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
                 <select
                   name="time"
                   value={form.time}
                   onChange={handleChange}
                   required
-                  className={`${selectCls} ${isRTL ? 'pr-10 pl-9' : 'pl-10 pr-9'}`}
+                  className={`${selectCls} ${isRTL ? "pr-10 pl-9" : "pl-10 pr-9"}`}
                   style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
                 >
                   <option value="" disabled className="bg-[#040809]">{t("booking.form.time")}</option>
-                  {timeSlots.map((t) => (
-                    <option key={t} value={t} className="bg-[#040809]">{t}</option>
+                  {timeSlots.map((slot) => (
+                    <option key={slot} value={slot} className="bg-[#040809]">{slot}</option>
                   ))}
                 </select>
-                <ChevronDown size={14} className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
+                <ChevronDown size={14} className={`absolute ${isRTL ? "left-4" : "right-4"} top-1/2 -translate-y-1/2 text-[#D4AF37]/40 pointer-events-none`} />
               </div>
             </div>
 
@@ -319,9 +438,11 @@ export function Booking() {
                       : "border-[#D4AF37]/12 bg-[#090f0a] hover:border-[#D4AF37]/35"
                   }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
-                    form.barber === "" ? "border-[#D4AF37] bg-[#D4AF37]/15" : "border-[#D4AF37]/20 bg-[#D4AF37]/5"
-                  }`}>
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${
+                      form.barber === "" ? "border-[#D4AF37] bg-[#D4AF37]/15" : "border-[#D4AF37]/20 bg-[#D4AF37]/5"
+                    }`}
+                  >
                     {form.barber === "" ? (
                       <Check size={16} className="text-[#D4AF37]" />
                     ) : (
@@ -355,7 +476,7 @@ export function Booking() {
                           src={getImageUrl(member.photo)}
                           alt={member.name}
                           className="w-12 h-12 rounded-full object-cover"
-                          style={{ objectPosition: member.photoPosition ?? 'center' }}
+                          style={{ objectPosition: member.photoPosition ?? "center" }}
                         />
                         {isSelected && (
                           <div className="absolute inset-0 rounded-full border-2 border-[#D4AF37] flex items-end justify-end">
@@ -403,16 +524,90 @@ export function Booking() {
                 style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
                 <WhatsAppIcon />
-                {language === 'ar' ? 'الحجز مباشرة عبر واتساب' : language === 'en' ? 'Book directly via WhatsApp' : 'Réserver directement via WhatsApp'}
+                {language === "ar"
+                  ? "الحجز مباشرة عبر واتساب"
+                  : language === "en"
+                  ? "Book directly via WhatsApp"
+                  : "Réserver directement via WhatsApp"}
               </a>
 
               <p
                 className="text-center text-[#f0ebe0]/22 text-[10px] tracking-wider pt-1"
                 style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
               >
-                {language === 'ar' ? 'يقوم فريقنا بتأكيد الحجوزات عبر الهاتف أو واتساب في غضون ساعتين' : language === 'en' ? 'Our team confirms bookings by phone or WhatsApp within 2h' : 'Notre équipe confirme les réservations par téléphone ou WhatsApp sous 2h'}
+                {language === "ar"
+                  ? "يقوم فريقنا بتأكيد الحجوزات عبر الهاتف أو واتساب في غضون ساعتين"
+                  : language === "en"
+                  ? "Our team confirms bookings by phone or WhatsApp within 2h"
+                  : "Notre équipe confirme les réservations par téléphone ou WhatsApp sous 2h"}
               </p>
             </div>
+
+            {/* Spacer to prevent floating cart from overlapping submit button */}
+            {cart.length > 0 && <div className="md:col-span-2 h-20" aria-hidden="true" />}
+
+            {/* ── Floating Cart Banner ─────────────────────────────────────── */}
+            <AnimatePresence>
+              {cart.length > 0 && (
+                <motion.div
+                  initial={{ y: 80, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 80, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#D4AF37]/25 bg-[#040809]/96"
+                  style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
+                >
+                  <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+                    {/* Selected services as tags */}
+                    <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                      {cart.map((s) => (
+                        <span
+                          key={s.id}
+                          className="inline-flex items-center gap-1 bg-[#D4AF37]/10 border border-[#D4AF37]/25 text-[#D4AF37] text-[9px] tracking-[0.1em] uppercase px-2 py-1"
+                        >
+                          <span className="truncate max-w-[100px]">{s.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(s.id)}
+                            className="shrink-0 text-[#D4AF37]/50 hover:text-[#D4AF37] transition-colors ml-0.5"
+                          >
+                            <X size={9} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Total price */}
+                    <div className="text-right hidden sm:block shrink-0">
+                      <div
+                        className="text-[#D4AF37] font-bold text-base leading-tight"
+                        style={{ fontFamily: "Playfair Display, serif" }}
+                      >
+                        {totalPrice} DH
+                      </div>
+                      <div className="text-[#f0ebe0]/30 text-[8px] tracking-widest uppercase">
+                        {cart.length} service{cart.length > 1 ? "s" : ""}
+                      </div>
+                    </div>
+
+                    {/* Book button */}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-[#D4AF37] text-[#040809] py-2.5 px-5 text-[10px] tracking-[0.2em] uppercase hover:bg-[#c9a632] transition-all font-bold flex items-center gap-2 disabled:opacity-60 shrink-0"
+                      style={{ fontFamily: isRTL ? "inherit" : "Raleway, sans-serif" }}
+                    >
+                      {loading ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <Check size={11} />
+                      )}
+                      {language === "ar" ? "أكد الحجز" : language === "en" ? "Book Now" : "Réserver"}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.form>
         )}
       </div>

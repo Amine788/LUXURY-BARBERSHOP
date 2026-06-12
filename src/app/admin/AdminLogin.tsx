@@ -361,6 +361,68 @@ export function AdminLogin({ onLogin }: Props) {
                 Retour au mot de passe
               </button>
             )}
+
+            {/* Dev Bypass (visible uniquement sur localhost) */}
+            {(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && (
+              <div className="pt-4 border-t border-[#D4AF37]/10 mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const exp = Math.floor(Date.now() / 1000) + 43200;
+                    const payload = btoa(JSON.stringify({ exp }));
+                    const mockToken = `mock.${payload}.token`;
+                    
+                    localStorage.setItem("aviator_admin_auth", "true");
+                    localStorage.setItem("aviator_admin_token", mockToken);
+                    localStorage.setItem("aviator_admin_token_exp", String(exp));
+                    sessionStorage.setItem("aviator_admin_last_activity", String(Date.now()));
+                    
+                    // Ajouter des données de test si elles n'existent pas
+                    const currentReservations = localStorage.getItem("aviator_reservations");
+                    if (!currentReservations || JSON.parse(currentReservations).length === 0) {
+                      const testReservations = [
+                        {
+                          id: "res_1",
+                          submittedAt: new Date().toISOString(),
+                          name: "Amine El Amrani",
+                          phone: "0612345678",
+                          date: new Date().toISOString().split('T')[0],
+                          time: "14:30",
+                          barberId: "1",
+                          services: [
+                            { id: "s1", name: "Coupe Classique", price: 150 },
+                            { id: "s2", name: "Barbe Traditionnelle", price: 100 }
+                          ],
+                          status: "Confirmé"
+                        },
+                        {
+                          id: "res_2",
+                          submittedAt: new Date(Date.now() - 3600000).toISOString(),
+                          name: "Yassine Benjelloun",
+                          phone: "0687654321",
+                          date: new Date().toISOString().split('T')[0],
+                          time: "16:00",
+                          barberId: "2",
+                          services: [
+                            { id: "s3", name: "Soin Visage Premium", price: 200 },
+                            { id: "s1", name: "Coupe Classique", price: 150 },
+                            { id: "s4", name: "Coloration", price: 300 }
+                          ],
+                          status: "En attente"
+                        }
+                      ];
+                      localStorage.setItem("aviator_reservations", JSON.stringify(testReservations));
+                    }
+                    
+                    onLogin();
+                  }}
+                  className="px-4 py-2 border border-[#D4AF37]/30 text-[#D4AF37]/80 hover:text-[#D4AF37] hover:bg-[#D4AF37]/5 transition-all text-[9px] tracking-widest uppercase font-semibold"
+                  style={{ fontFamily: "Raleway, sans-serif" }}
+                >
+                  ⚡ Mode Dev : Connexion Express
+                </button>
+              </div>
+            )}
           </form>
         </div>
 

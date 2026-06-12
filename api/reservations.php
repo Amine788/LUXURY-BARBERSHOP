@@ -8,19 +8,19 @@ $pdo = getPDO();
 if ($method === 'GET') {
     checkAuth(); // Protection JWT
     $stmt = $pdo->query(
-        "SELECT id, submitted_at, name, phone, service, barber, date, time, status
+        "SELECT id, submitted_at, name, phone, services, barber, date, time, status
          FROM reservations
          ORDER BY submitted_at DESC"
     );
     $rows = $stmt->fetchAll();
 
-    // Normaliser les noms de champs (snake_case → camelCase)
+    // Normaliser les noms de champs (snake_case → camelCase) + décoder services JSON
     $result = array_map(fn($r) => [
         'id'          => $r['id'],
         'submittedAt' => $r['submitted_at'],
         'name'        => $r['name'],
         'phone'       => $r['phone'],
-        'service'     => $r['service'],
+        'services'    => json_decode($r['services'] ?? '[]', true) ?? [],
         'barber'      => $r['barber'] ?? '',
         'date'        => $r['date'],
         'time'        => $r['time'],
@@ -40,19 +40,31 @@ elseif ($method === 'POST') {
         exit;
     }
 
+    // Support du nouveau champ 'services' (tableau) et fallback vers 'service' (string ancien format)
+    if (!empty($data['services']) && is_array($data['services']) && count($data['services']) > 0) {
+        $services = $data['services'];
+    } elseif (!empty($data['service']) && is_string($data['service'])) {
+        // Compatibilité ascendante : wrapper l'ancien champ en tableau
+        $services = [['id' => '0', 'name' => $data['service'], 'price' => 0]];
+    } else {
+        http_response_code(400);
+        echo json_encode(['error' => 'Le champ services est requis et doit être un tableau non vide']);
+        exit;
+    }
+
     $id = uniqid('res_', true);
     $stmt = $pdo->prepare(
-        "INSERT INTO reservations (id, submitted_at, name, phone, service, barber, date, time, status)
-         VALUES (:id, NOW(), :name, :phone, :service, :barber, :date, :time, 'En attente')"
+        "INSERT INTO reservations (id, submitted_at, name, phone, services, barber, date, time, status)
+         VALUES (:id, NOW(), :name, :phone, :services, :barber, :date, :time, 'En attente')"
     );
     $stmt->execute([
-        ':id'      => $id,
-        ':name'    => $data['name']    ?? '',
-        ':phone'   => $data['phone']   ?? '',
-        ':service' => $data['service'] ?? '',
-        ':barber'  => $data['barber']  ?? '',
-        ':date'    => $data['date']    ?? '',
-        ':time'    => $data['time']    ?? '',
+        ':id'       => $id,
+        ':name'     => $data['name']   ?? '',
+        ':phone'    => $data['phone']  ?? '',
+        ':services' => json_encode($services, JSON_UNESCAPED_UNICODE),
+        ':barber'   => $data['barber'] ?? '',
+        ':date'     => $data['date']   ?? '',
+        ':time'     => $data['time']   ?? '',
     ]);
 
     http_response_code(201);

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Calendar, Clock, User, Phone, Scissors,
   Trash2, CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2,
-  Search, Filter, X, ChevronDown
+  Search, Filter, X, ChevronDown, Award
 } from "lucide-react";
 import {
   getReservations,
@@ -16,28 +16,34 @@ import {
 
 const STATUS_CONFIG = {
   "En attente": {
-    color: "text-amber-400",
-    bg: "bg-amber-400/10 border-amber-400/30",
-    icon: <AlertCircle size={12} />,
+    styles: "text-amber-400 bg-amber-400/8 border border-amber-400/20",
+    dot: "bg-amber-400",
   },
   "Confirmé": {
-    color: "text-emerald-400",
-    bg: "bg-emerald-400/10 border-emerald-400/30",
-    icon: <CheckCircle size={12} />,
+    styles: "text-emerald-400 bg-emerald-400/8 border border-emerald-400/20",
+    dot: "bg-emerald-400",
   },
   "Annulé": {
-    color: "text-red-400",
-    bg: "bg-red-400/10 border-red-400/30",
-    icon: <XCircle size={12} />,
+    styles: "text-red-400 bg-red-400/8 border border-red-500/20",
+    dot: "bg-red-400",
   },
   "Servi": {
-    color: "text-[#D4AF37]",
-    bg: "bg-[#D4AF37]/10 border-[#D4AF37]/30",
-    icon: <CheckCircle size={12} />,
+    styles: "text-[#D4AF37] bg-[#D4AF37]/8 border border-[#D4AF37]/20",
+    dot: "bg-[#D4AF37]",
   },
 };
 
 type DateFilter = "Tous" | "Aujourd'hui" | "Cette semaine" | "Ce mois" | "Custom";
+
+function formatReadableDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+  } catch {
+    return dateStr;
+  }
+}
 
 export function Reservations() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -120,7 +126,7 @@ export function Reservations() {
       const statusMatch = statusFilter === "Tous" || res.status === statusFilter;
 
       // 3. Service
-      const serviceMatch = serviceFilter === "Tous" || res.service === serviceFilter;
+      const serviceMatch = serviceFilter === "Tous" || (res.services ?? []).some(s => s.name === serviceFilter);
 
       // 4. Barber
       const barberMatch = barberFilter === "Tous" || res.barber === barberFilter;
@@ -200,7 +206,7 @@ export function Reservations() {
             onClick={() => setStatusFilter(s)}
             className={`p-4 border text-left transition-all relative overflow-hidden group ${
               statusFilter === s
-                ? "border-[#D4AF37]/40 bg-[#D4AF37]/5"
+                ? "border-[#D4AF37]/45 bg-[#D4AF37]/5 shadow-lg shadow-[#D4AF37]/5"
                 : "border-[#D4AF37]/10 bg-[#0a110a] hover:border-[#D4AF37]/25"
             }`}
           >
@@ -294,7 +300,7 @@ export function Reservations() {
         </div>
       </div>
 
-      {/* List */}
+      {/* Main Content List / Table */}
       {loading && filtered.length === 0 ? (
         <div className="border border-[#D4AF37]/10 bg-[#0a110a] p-16 text-center">
           <Loader2 size={32} className="text-[#D4AF37]/30 mx-auto mb-4 animate-spin" />
@@ -312,131 +318,279 @@ export function Reservations() {
         </div>
       ) : (
         <div className="space-y-4">
-          <AnimatePresence mode="popLayout">
-            {filtered.map((res) => {
-              const cfg = STATUS_CONFIG[res.status];
-              return (
-                <motion.div
-                  key={res.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.2 }}
-                  className="bg-[#0a110a] border border-[#D4AF37]/10 p-5 hover:border-[#D4AF37]/30 transition-all duration-300 relative group"
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                    {/* Client Info */}
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="space-y-1.5">
-                        <span className="text-[#D4AF37]/40 text-[9px] uppercase tracking-[0.2em] block">Client</span>
-                        <div className="flex items-center gap-2">
-                          <User size={14} className="text-[#D4AF37]" />
-                          <span className="text-[#f0ebe0] font-medium text-sm">{res.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#f0ebe0]/40">
-                          <Phone size={11} />
-                          <span className="text-[11px] tracking-wider">{res.phone}</span>
-                        </div>
-                      </div>
+          {/* DESKTOP TABLE VIEW */}
+          <div className="hidden md:block bg-[#0a110a] border border-[#D4AF37]/10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-[#D4AF37]/15 bg-[#050805]/50 text-[#D4AF37] text-[10px] tracking-[0.2em] uppercase">
+                    <th className="py-4.5 px-6 font-semibold">Date & Heure</th>
+                    <th className="py-4.5 px-6 font-semibold">Client</th>
+                    <th className="py-4.5 px-6 font-semibold">Prestations</th>
+                    <th className="py-4.5 px-6 font-semibold">Barbier</th>
+                    <th className="py-4.5 px-6 font-semibold">Total</th>
+                    <th className="py-4.5 px-6 font-semibold">Statut</th>
+                    <th className="py-4.5 px-6 text-right font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#D4AF37]/8">
+                  <AnimatePresence mode="popLayout">
+                    {filtered.map((res) => {
+                      const cfg = STATUS_CONFIG[res.status] || STATUS_CONFIG["En attente"];
+                      const totalPrice = (res.services ?? []).reduce((sum, s) => sum + (s.price || 0), 0);
 
-                      <div className="space-y-1.5">
-                        <span className="text-[#D4AF37]/40 text-[9px] uppercase tracking-[0.2em] block">Prestation</span>
-                        <div className="flex items-center gap-2">
-                          <Scissors size={14} className="text-[#D4AF37]" />
-                          <span className="text-[#f0ebe0]/90 text-sm">{res.service}</span>
-                        </div>
-                        <div className="text-[11px] text-[#f0ebe0]/40 flex items-center gap-2">
-                          <span className="w-1 h-1 rounded-full bg-[#D4AF37]/40" />
-                          Barbier: {res.barber || "Non spécifié"}
-                        </div>
-                      </div>
+                      return (
+                        <motion.tr
+                          key={res.id}
+                          layout
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="hover:bg-[#D4AF37]/2 transition-colors duration-250 align-middle"
+                        >
+                          {/* Date & Time */}
+                          <td className="py-5 px-6 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-[#D4AF37]/8 border border-[#D4AF37]/12 text-[#D4AF37]">
+                                <Clock size={15} />
+                              </div>
+                              <div>
+                                <div className="text-[#D4AF37] font-bold text-sm tracking-wide">{res.time}</div>
+                                <div className="text-[#f0ebe0]/55 text-xs mt-0.5">{formatReadableDate(res.date)}</div>
+                              </div>
+                            </div>
+                          </td>
 
-                      <div className="space-y-1.5">
-                        <span className="text-[#D4AF37]/40 text-[9px] uppercase tracking-[0.2em] block">Rendez-vous</span>
-                        <div className="flex items-center gap-2">
-                          <Calendar size={14} className="text-[#D4AF37]" />
-                          <span className="text-[#f0ebe0]/90 text-sm">{res.date}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#f0ebe0]/40">
-                          <Clock size={12} />
-                          <span className="text-[11px] tracking-wider">{res.time}</span>
-                        </div>
-                      </div>
-                    </div>
+                          {/* Client */}
+                          <td className="py-5 px-6">
+                            <div>
+                              <div className="text-[#f0ebe0] font-semibold text-sm tracking-wide">{res.name}</div>
+                              <div className="flex items-center gap-1 text-[#f0ebe0]/40 text-xs mt-0.5 font-mono">
+                                <Phone size={10} className="shrink-0" />
+                                <span>{res.phone}</span>
+                              </div>
+                            </div>
+                          </td>
 
-                    {/* Actions Area */}
-                    <div className="flex flex-wrap items-center gap-2 lg:border-l lg:border-[#D4AF37]/10 lg:pl-6">
-                      <div className={`flex items-center gap-2 border px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase ${cfg.color} ${cfg.bg}`}>
-                        {cfg.icon}
+                          {/* Prestations */}
+                          <td className="py-5 px-6 max-w-xs lg:max-w-sm">
+                            <div className="flex flex-wrap gap-1.5">
+                              {(res.services ?? []).length > 0 ? (
+                                (res.services ?? []).map((s, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-block bg-[#D4AF37]/8 border border-[#D4AF37]/18 text-[#D4AF37] text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-sm"
+                                  >
+                                    {s.name} ({s.price} DH)
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-[#f0ebe0]/30 text-xs">—</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Barbier */}
+                          <td className="py-5 px-6 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-[#f0ebe0]/80 text-xs">
+                              <Award size={12} className="text-[#D4AF37]/60" />
+                              <span>{res.barber || "Non assigné"}</span>
+                            </div>
+                          </td>
+
+                          {/* Total Price */}
+                          <td className="py-5 px-6 whitespace-nowrap">
+                            <div className="text-[#D4AF37] font-bold font-mono text-sm">
+                              {totalPrice} DH
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-5 px-6 whitespace-nowrap">
+                            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${cfg.styles}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                              {res.status}
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-5 px-6 text-right whitespace-nowrap">
+                            <div className="inline-flex gap-1.5 items-center justify-end">
+                              {res.status === "Confirmé" && (
+                                <button
+                                  onClick={() => handleStatus(res.id, "Servi")}
+                                  title="Marquer comme servi (Terminé)"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all text-[9px] font-bold tracking-widest uppercase rounded-sm"
+                                >
+                                  <CheckCircle size={11} /> Terminer
+                                </button>
+                              )}
+                              {res.status !== "Confirmé" && res.status !== "Servi" && (
+                                <button
+                                  onClick={() => handleStatus(res.id, "Confirmé")}
+                                  title="Confirmer la réservation"
+                                  className="p-1.5 border border-emerald-500/20 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/10 transition-all rounded-sm"
+                                >
+                                  <CheckCircle size={14} />
+                                </button>
+                              )}
+                              {res.status !== "Annulé" && res.status !== "Servi" && (
+                                <button
+                                  onClick={() => handleStatus(res.id, "Annulé")}
+                                  title="Annuler la réservation"
+                                  className="p-1.5 border border-red-500/20 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 transition-all rounded-sm"
+                                >
+                                  <XCircle size={14} />
+                                </button>
+                              )}
+                              {res.status !== "En attente" && (
+                                <button
+                                  onClick={() => handleStatus(res.id, "En attente")}
+                                  title="Remettre en attente"
+                                  className="p-1.5 border border-amber-500/20 text-amber-500/60 hover:text-amber-500 hover:bg-amber-500/10 transition-all rounded-sm"
+                                >
+                                  <AlertCircle size={14} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDelete(res.id)}
+                                title="Supprimer définitivement"
+                                className={`p-1.5 border transition-all rounded-sm ${
+                                  deleteConfirm === res.id
+                                    ? "bg-red-500 border-red-500 text-white"
+                                    : "border-white/5 text-white/20 hover:text-red-500 hover:bg-red-500/5 hover:border-red-500/20"
+                                }`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </AnimatePresence>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* MOBILE CARDS VIEW */}
+          <div className="md:hidden space-y-4">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((res) => {
+                const cfg = STATUS_CONFIG[res.status] || STATUS_CONFIG["En attente"];
+                const totalPrice = (res.services ?? []).reduce((sum, s) => sum + (s.price || 0), 0);
+
+                return (
+                  <motion.div
+                    key={res.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="bg-[#0a110a] border border-[#D4AF37]/10 p-5 rounded-sm space-y-4"
+                  >
+                    {/* Header: Date/Heure + Statut */}
+                    <div className="flex items-center justify-between pb-3 border-b border-[#D4AF37]/10">
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-[#D4AF37]" />
+                        <span className="text-sm font-bold text-[#D4AF37]">{res.time}</span>
+                        <span className="text-[#f0ebe0]/30 text-xs">•</span>
+                        <span className="text-[#f0ebe0]/60 text-xs">{formatReadableDate(res.date)}</span>
+                      </div>
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase ${cfg.styles}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                         {res.status}
                       </div>
+                    </div>
 
-                      <div className="flex gap-1">
-                        {res.status === "Confirmé" && (
-                          <button
-                            onClick={() => handleStatus(res.id, "Servi")}
-                            title="Marquer comme servi (Terminé)"
-                            className="flex items-center gap-2 px-3 py-1.5 border border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all text-[9px] font-bold tracking-widest uppercase"
-                          >
-                            <CheckCircle size={12} /> Terminer
-                          </button>
-                        )}
-                        {res.status !== "Confirmé" && res.status !== "Servi" && (
-                          <button
-                            onClick={() => handleStatus(res.id, "Confirmé")}
-                            title="Confirmer la réservation"
-                            className="p-2 border border-emerald-500/20 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/10 transition-all"
-                          >
-                            <CheckCircle size={14} />
-                          </button>
-                        )}
-                        {res.status !== "Annulé" && res.status !== "Servi" && (
-                          <button
-                            onClick={() => handleStatus(res.id, "Annulé")}
-                            title="Annuler la réservation"
-                            className="p-2 border border-red-500/20 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 transition-all"
-                          >
-                            <XCircle size={14} />
-                          </button>
-                        )}
-                        {res.status !== "En attente" && (
-                          <button
-                            onClick={() => handleStatus(res.id, "En attente")}
-                            title="Remettre en attente"
-                            className="p-2 border border-amber-500/20 text-amber-500/60 hover:text-amber-500 hover:bg-amber-500/10 transition-all"
-                          >
-                            <AlertCircle size={14} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(res.id)}
-                          title="Supprimer définitivement"
-                          className={`p-2 border transition-all ${
-                            deleteConfirm === res.id
-                              ? "bg-red-500 border-red-500 text-white"
-                              : "border-white/5 text-white/20 hover:text-red-500 hover:bg-red-500/5 hover:border-red-500/20"
-                          }`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                    {/* Client Info */}
+                    <div className="space-y-1">
+                      <div className="text-[10px] text-[#D4AF37]/50 uppercase tracking-widest">Client</div>
+                      <div className="text-sm font-bold text-[#f0ebe0]">{res.name}</div>
+                      <div className="text-xs text-[#f0ebe0]/50 font-mono flex items-center gap-1">
+                        <Phone size={10} /> {res.phone}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Submission Info */}
-                  <div className="mt-4 pt-3 border-t border-[#D4AF37]/5 flex justify-between items-center">
-                    <span className="text-[#f0ebe0]/10 text-[9px] uppercase tracking-widest">
-                      ID: {res.id}
-                    </span>
-                    <span className="text-[#f0ebe0]/20 text-[9px] uppercase tracking-widest">
-                      Reçue le {new Date(res.submittedAt).toLocaleString("fr-FR")}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                    {/* Prestations */}
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] text-[#D4AF37]/50 uppercase tracking-widest">Prestations</div>
+                      <div className="flex flex-wrap gap-1">
+                        {(res.services ?? []).map((s, i) => (
+                          <span
+                            key={i}
+                            className="bg-[#D4AF37]/10 border border-[#D4AF37]/20 text-[#D4AF37] text-[9px] px-2 py-0.5 rounded-sm"
+                          >
+                            {s.name} ({s.price} DH)
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Barber & Total */}
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <div className="text-[10px] text-[#D4AF37]/50 uppercase tracking-widest">Barbier</div>
+                        <div className="text-xs text-[#f0ebe0]/80 mt-1 font-medium">{res.barber || "Non assigné"}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#D4AF37]/50 uppercase tracking-widest">Total</div>
+                        <div className="text-sm font-bold text-[#D4AF37] mt-1">{totalPrice} DH</div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-3 border-t border-[#D4AF37]/10 flex flex-wrap gap-2 justify-end">
+                      {res.status === "Confirmé" && (
+                        <button
+                          onClick={() => handleStatus(res.id, "Servi")}
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#D4AF37]/45 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-[9px] font-bold tracking-widest uppercase rounded-sm"
+                        >
+                          <CheckCircle size={10} /> Terminer
+                        </button>
+                      )}
+                      {res.status !== "Confirmé" && res.status !== "Servi" && (
+                        <button
+                          onClick={() => handleStatus(res.id, "Confirmé")}
+                          className="p-2 border border-emerald-500/20 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-sm"
+                        >
+                          <CheckCircle size={13} />
+                        </button>
+                      )}
+                      {res.status !== "Annulé" && res.status !== "Servi" && (
+                        <button
+                          onClick={() => handleStatus(res.id, "Annulé")}
+                          className="p-2 border border-red-500/20 text-red-500/60 hover:text-red-500 hover:bg-red-500/10 rounded-sm"
+                        >
+                          <XCircle size={13} />
+                        </button>
+                      )}
+                      {res.status !== "En attente" && (
+                        <button
+                          onClick={() => handleStatus(res.id, "En attente")}
+                          className="p-2 border border-amber-500/20 text-amber-500/60 hover:text-amber-500 hover:bg-amber-500/10 rounded-sm"
+                        >
+                          <AlertCircle size={13} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(res.id)}
+                        className={`p-2 border rounded-sm ${
+                          deleteConfirm === res.id
+                            ? "bg-red-500 border-red-500 text-white"
+                            : "border-white/5 text-white/20 hover:text-red-500 hover:bg-red-500/5 hover:border-red-500/20"
+                        }`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
         </div>
       )}
     </div>

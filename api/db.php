@@ -38,7 +38,7 @@ if (empty($jwtSecret) || $jwtSecret === 'CHANGE_ME_GENERATE_WITH_openssl_rand_he
     $jwtSecret = 'local_dev_secret_not_for_production_only';
 }
 define('JWT_SECRET', $jwtSecret);
-define('JWT_EXPIRY', 18000); // 5 heures
+define('JWT_EXPIRY', 43200); // 12 heures
 
 // ─── Brute Force ──────────────────────────────────────────────────────────────
 define('MAX_LOGIN_ATTEMPTS', (int)($_ENV['MAX_LOGIN_ATTEMPTS'] ?? 5));

@@ -25,12 +25,18 @@ export interface PricingCategory {
   items: PriceItem[];
 }
 
+export interface ServiceItem {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export interface Reservation {
   id: string;
   submittedAt: string;
   name: string;
   phone: string;
-  service: string;
+  services: ServiceItem[];
   barber: string;
   date: string;
   time: string;
@@ -353,14 +359,39 @@ export async function saveBarbers(barbers: Barber[]): Promise<void> {
 
 // ─── Reservations ─────────────────────────────────────────────────────────────
 
+// Normalise une réservation depuis l'API ou le localStorage
+// Gère la compatibilité ascendante avec l'ancien champ 'service' (string)
+function normalizeReservation(r: Record<string, unknown>): Reservation {
+  let services: ServiceItem[] = [];
+  if (Array.isArray(r['services'])) {
+    services = r['services'] as ServiceItem[];
+  } else if (typeof r['services'] === 'string') {
+    try { services = JSON.parse(r['services']) as ServiceItem[]; } catch { /* ignore */ }
+  } else if (typeof r['service'] === 'string' && r['service']) {
+    // Ancien format : champ service (string) → tableau
+    services = [{ id: '0', name: r['service'] as string, price: 0 }];
+  }
+  return {
+    id:          r['id'] as string,
+    submittedAt: r['submittedAt'] as string,
+    name:        r['name'] as string,
+    phone:       r['phone'] as string,
+    services,
+    barber:      (r['barber'] as string) ?? '',
+    date:        r['date'] as string,
+    time:        r['time'] as string,
+    status:      r['status'] as Reservation['status'],
+  };
+}
+
 export async function getReservations(): Promise<Reservation[]> {
   try {
     const data = await apiFetch('/reservations.php');
-    if (Array.isArray(data)) return data as Reservation[];
+    if (Array.isArray(data)) return (data as Record<string, unknown>[]).map(normalizeReservation);
   } catch { /* fallback */ }
   try {
     const raw = localStorage.getItem(LS.reservations);
-    if (raw) return JSON.parse(raw) as Reservation[];
+    if (raw) return (JSON.parse(raw) as Record<string, unknown>[]).map(normalizeReservation);
   } catch { /* ignore */ }
   return [];
 }
@@ -453,7 +484,7 @@ export interface LoginResult {
 }
 
 const SS_LAST_ACTIVITY = "aviator_admin_last_activity";
-const INACTIVITY_TIMEOUT = 18000; // 5 heures (en secondes)
+const INACTIVITY_TIMEOUT = 43200; // 12 heures (en secondes)
 
 function decodeJWTPayload(token: string): Record<string, unknown> | null {
   try {
@@ -474,8 +505,8 @@ function saveToken(token: string): void {
   if (exp) {
     localStorage.setItem(LS.tokenExp, String(exp));
   } else {
-    // Si pas d'exp dans le token, on met un défaut (2h)
-    localStorage.setItem(LS.tokenExp, String(Math.floor(Date.now() / 1000) + 7200));
+    // Si pas d'exp dans le token, on met un défaut (12h)
+    localStorage.setItem(LS.tokenExp, String(Math.floor(Date.now() / 1000) + 43200));
   }
   sessionStorage.setItem(SS_LAST_ACTIVITY, String(Date.now()));
 }
